@@ -141,10 +141,52 @@ def main() -> None:
         action="store_true",
         help="Force overwrite of existing VertiGIS Workflow SDK directives block in AGENTS.md",
     )
+    parser.add_argument(
+        "--skills",
+        "--install-skill",
+        dest="install_skill",
+        action="store_true",
+        default=None,
+        help="Install the vertigis-workflow-sdk-skill into the target project via npx skills add",
+    )
+    parser.add_argument(
+        "--no-skills",
+        dest="no_skills",
+        action="store_true",
+        help="Skip skill installation prompt",
+    )
 
     args = parser.parse_args()
     target_path = Path(args.target_dir_opt or args.target_dir_pos or ".").resolve()
     initiate_agents_md(target_path, force=args.force)
+
+    # Prompt to install skill via npx skills add
+    should_install = args.install_skill
+    if should_install is None and not args.no_skills:
+        if sys.stdin.isatty():
+            try:
+                response = input(
+                    "\n? Would you like to install the VertiGIS Workflow SDK AI Skill into this project repository? [Y/n]: "
+                ).strip().lower()
+                should_install = response == "" or response.startswith("y")
+            except (KeyboardInterrupt, EOFError):
+                should_install = False
+        else:
+            print("\n[INFO] To install the AI skill, run: npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill")
+
+    if should_install:
+        print("\n[SKILLS] Installing vertigis-workflow-sdk-skill via npx skills add...")
+        import subprocess
+        try:
+            subprocess.run(
+                ["npx", "--yes", "skills", "add", "davekazemi/vertigis-sdk-skills", "--skill", "vertigis-workflow-sdk-skill", "-y"],
+                cwd=str(target_path),
+                check=True,
+            )
+            print("✔ Skill installed successfully into .agents/skills/\n")
+        except Exception as e:
+            print(f"[WARN] Failed to install skill automatically: {e}")
+            print("[INFO] You can run manually: npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill\n")
 
 
 if __name__ == "__main__":
