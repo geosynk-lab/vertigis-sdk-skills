@@ -89,41 +89,41 @@ If you are using an agentic IDE like Antigravity, Cursor, Claude Code, or Cline,
 
 #### 🎯 Interactive Install (prompts to choose specific skills or select all)
 ```bash
-npx skills add davekazemi/vertigis-sdk-skills
+npx skills add geosynk-lab/vertigis-sdk-skills
 ```
 
 #### ⚡ One-Line Install for All Skills
 ```bash
-npx skills add davekazemi/vertigis-sdk-skills --all
+npx skills add geosynk-lab/vertigis-sdk-skills --all
 ```
 
 #### 🌐 Global Install (User-level across all projects and agents)
 ```bash
-npx skills add davekazemi/vertigis-sdk-skills -g --all
+npx skills add geosynk-lab/vertigis-sdk-skills -g --all
 ```
 
 #### 📦 Install a Specific Skill
 ```bash
 # Web SDK only
-npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-web-sdk-skill
+npx skills add geosynk-lab/vertigis-sdk-skills --skill vertigis-web-sdk-skill
 
 # Workflow SDK (TypeScript) only
-npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill
+npx skills add geosynk-lab/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill
 
 # Workflow .NET SDK (C#) only
-npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-dotnet-skill
+npx skills add geosynk-lab/vertigis-sdk-skills --skill vertigis-workflow-dotnet-skill
 ```
 
 ### Option 2: One-Line Global Install (For Antigravity)
 If you want to install them globally on your machine so the AI knows VertiGIS for all your projects:
 ```bash
-mkdir -p ~/.gemini/config/skills && cd ~/.gemini/config/skills && git clone https://github.com/davekazemi/vertigis-sdk-skills.git
+mkdir -p ~/.gemini/config/skills && cd ~/.gemini/config/skills && git clone https://github.com/geosynk-lab/vertigis-sdk-skills.git
 ```
 
 ### Option 3: Project-Specific Git Submodule
 Share these skills with your dev team by adding them directly into your project's agent configuration folder:
 ```bash
-git submodule add https://github.com/davekazemi/vertigis-sdk-skills.git .agents/skills/vertigis-sdk-skills
+git submodule add https://github.com/geosynk-lab/vertigis-sdk-skills.git .agents/skills/vertigis-sdk-skills
 ```
 
 ### Option 4: Manual System Prompt (ChatGPT / Claude)

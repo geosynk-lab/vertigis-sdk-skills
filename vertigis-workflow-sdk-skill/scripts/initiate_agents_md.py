@@ -172,21 +172,21 @@ def main() -> None:
             except (KeyboardInterrupt, EOFError):
                 should_install = False
         else:
-            print("\n[INFO] To install the AI skill, run: npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill")
+            print("\n[INFO] To install the AI skill, run: npx skills add geosynk-lab/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill")
 
     if should_install:
         print("\n[SKILLS] Installing vertigis-workflow-sdk-skill via npx skills add...")
         import subprocess
         try:
             subprocess.run(
-                ["npx", "--yes", "skills", "add", "davekazemi/vertigis-sdk-skills", "--skill", "vertigis-workflow-sdk-skill", "-y"],
+                ["npx", "--yes", "skills", "add", "geosynk-lab/vertigis-sdk-skills", "--skill", "vertigis-workflow-sdk-skill", "-y"],
                 cwd=str(target_path),
                 check=True,
             )
             print("✔ Skill installed successfully into .agents/skills/\n")
         except Exception as e:
             print(f"[WARN] Failed to install skill automatically: {e}")
-            print("[INFO] You can run manually: npx skills add davekazemi/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill\n")
+            print("[INFO] You can run manually: npx skills add geosynk-lab/vertigis-sdk-skills --skill vertigis-workflow-sdk-skill\n")
 
 
 if __name__ == "__main__":
