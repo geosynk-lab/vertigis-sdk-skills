@@ -99,3 +99,21 @@ This generates the production output in the `dist/` directory, typically includi
   - In non-CSS contexts (Plotly charts, HTML5 Canvas, SVG generators, jsPDF exports): Call the standalone `isDarkTheme()` synchronous utility to inspect theme classes, background luminance, and OS media queries.
 - **MUI Theme Harmonization**: Wrap composite MUI controls (`<Slider>`, `<Switch>`, `<DatePicker>`, `<Select>`) in `VertiGisThemeProvider` (or configure via `createVertiGisMuiTheme`) so internal SVG icons, canvas elements, and surfaces synchronize with VertiGIS branding rather than default MUI blues.
 - For complete token dictionaries, helper implementations, theme hook source code, and MUI theme setup, see the [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).
+
+### G. ArcGIS Enterprise & Secured Portal Authentication
+When referencing secured Web Maps or operational layers hosted in an on-premise ArcGIS Enterprise Portal (e.g. `https://gis.company.com/portal`) or private ArcGIS Online organization:
+- **Prerequisite (Portal App Registration)**: Register an Application item in the Portal (`Content > Add Item > Application > Application Configuration`) and add both development redirect URIs:
+  - `https://localtest.me:3001`
+  - `https://localtest.me:3001/oauth_callback.html`
+- **Native Host Schema (`app/auth/portal.json`)**: VertiGIS Web shell's internal auth discovery expects:
+  ```json
+  {
+    "portal": "https://gis.company.com/portal",
+    "appId": "<OAuth_Client_ID>",
+    "clientId": "<OAuth_Client_ID>",
+    "accountId": "<org_identifier>"
+  }
+  ```
+  *(Note: Omitting `appId` or `accountId` causes VertiGIS Web to reject the config and fall back to the built-in basic username/password modal).*
+- **Trusted Servers & CORS**: Ensure the portal domain is registered in `esriConfig.request.trustedServers` and that `allowedOrigins` in Portal Administrator includes the client origin.
+- **Automated Tooling**: In projects created with `@geosynk/vertigis-web-sdk`, run `npm run auth:portal` to interactively configure portal parameters and web map item IDs without modifying core code. Revert to standard public maps anytime with `npm run auth:portal -- --reset`.
