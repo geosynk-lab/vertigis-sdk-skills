@@ -13,26 +13,45 @@ When an AI assistant is equipped with these skills, it doesn't just guess or out
 
 ```mermaid
 flowchart TD
-    A["Skill Triggered / 'initiate' command"] --> B["Scan Workspace for Project Files"]
+    %% Entry Point
+    Start(["🚀 Skill Triggered<br/>('initiate' command)"]) --> Scan["🔍 Scan Workspace for Project Files"]
 
-    B --> C{"Workspace State"}
+    %% Decision Node
+    Scan --> WorkspaceState{"📂 Workspace State"}
 
-    C -->|Existing Project| D
-    C -->|Empty / New| E
+    %% Branches
+    WorkspaceState -->|Existing Project Found| ExistingMode
+    WorkspaceState -->|Empty / New Directory| GrillMode
 
-    subgraph D ["Existing Workspace"]
-        D1["Review Code"]
-        D2["Configure AGENTS.md ('initiate')"]
-        D3["Add Component / Service"]
-        D4["Add Activity / Element"]
-        D5["Generate Tooling Scripts"]
+    %% Existing Workspace Flow
+    subgraph Existing ["🛠️ Existing Workspace Mode"]
+        direction TB
+        ExistingMode["📝 Categorized Code Review Audit<br/>(Errors, Warnings, Cleanliness)"]
+        Config["⚙️ Configure AGENTS.md Directives"]
+        
+        AddCom["🧩 Add Component / Service"]
+        AddAct["⚡ Add Activity / Form Element"]
+        
+        GenScripts["🛠️ Generate Tooling Scripts<br/>(Port-killing, Build scripts)"]
+        
+        ExistingMode --> Config
+        Config --> AddCom
+        Config --> AddAct
+        AddCom --> GenScripts
+        AddAct --> GenScripts
     end
 
-    subgraph E ["Grill-Me Discovery"]
-        E1["Target Extension Type"]
-        E2["Name & Custom Namespace"]
-        E3["HTTPS SSL Strategy"]
-        E4["Scaffold Project, AGENTS.md & Scripts"]
+    %% New Workspace Flow
+    subgraph Grill ["🔥 New Workspace Mode ('Grill-Me' Protocol)"]
+        direction TB
+        GrillMode["🎯 Extension Type Discovery"]
+        NameSpace["🏷️ Naming & Custom Namespace"]
+        SSL["🔒 HTTPS SSL Setup"]
+        Scaffold["🏗️ Automated Port Management & Scaffolding<br/>(Project, AGENTS.md & Scripts)"]
+        
+        GrillMode --> NameSpace
+        NameSpace --> SSL
+        SSL --> Scaffold
     end
 ```
 
