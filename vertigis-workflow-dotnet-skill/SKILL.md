@@ -3,13 +3,10 @@ name: vertigis-workflow-dotnet-skill
 description: >-
   Comprehensive guide and reference for developing custom .NET activities and form
   elements for VertiGIS Studio Mobile, VertiGIS Studio Desktop (ArcGIS Pro), and
-  VertiGIS Studio Workflow Server using C# and .NET.
-triggers:
-  - "Build a VertiGIS .NET workflow activity"
-  - "Create a VertiGIS Mobile form element"
-  - "VertiGIS Studio Workflow .NET SDK"
-  - "ArcGIS Pro Workflow activity"
-  - "Workflow Server activity"
+  VertiGIS Studio Workflow Server using C# and .NET. Use this skill whenever creating,
+  modifying, or reviewing VertiGIS .NET workflow activities (IActivityHandler),
+  Mobile form elements (XAML + ContentComponent), ArcGIS Pro SDK integration
+  (QueuedTask.Run), or Workflow Designer TypeScript stubs.
 ---
 
 # VertiGIS Studio Workflow .NET SDK Skill

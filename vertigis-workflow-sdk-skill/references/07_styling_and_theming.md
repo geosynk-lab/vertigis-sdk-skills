@@ -1,5 +1,27 @@
 # VertiGIS Studio Workflow SDK: Styling, Design Tokens & Dynamic Theming
 
+## Table of Contents
+- [Introduction & Architectural Overview](#introduction--architectural-overview)
+- [1. Typography System for Form Elements](#1-typography-system-for-form-elements)
+  - [MUI Typography Variant Reference for Form Elements](#mui-typography-variant-reference-for-form-elements)
+  - [Typography Rules & Best Practices](#typography-rules--best-practices)
+- [2. Centralized Design Token Architecture](#2-centralized-design-token-architecture)
+  - [Safe Fallbacks & Zero Hardcoded Colors Rule](#safe-fallbacks--zero-hardcoded-colors-rule)
+  - [UI Design Tokens (`tokens/ui.ts`)](#ui-design-tokens-tokensuits)
+  - [Typography Tokens (`tokens/typography.ts`)](#typography-tokens-tokenstypographyts)
+  - [Central Barrel Export & `color-mix` Utilities (`tokens/index.ts`)](#central-barrel-export--color-mix-utilities-tokensindexts)
+- [3. Dynamic Dual-Theme System (Light / Dark Mode Adaptation)](#3-dynamic-dual-theme-system-light--dark-mode-adaptation)
+  - [1. The Reactive Theme Hook (`src/hooks/useIsDarkTheme.ts`)](#1-the-reactive-theme-hook-srchooksuseisdarkthemets)
+  - [2. Standalone Theme Utility (`src/utils/themeDetection.ts`)](#2-standalone-theme-utility-srcutilsthemedetectionts)
+- [4. Material UI Theme Integration (`tokens/muiTheme.ts`)](#4-material-ui-theme-integration-tokensmuithemet)
+- [5. Mobile Touch Targets & Outdoor Field Guidelines](#5-mobile-touch-targets--outdoor-field-guidelines)
+  - [Mobile Touch Targets (Minimum 44x44px)](#mobile-touch-targets-minimum-44x44px)
+  - [Outdoor Field Contrast & Sunlight Readability](#outdoor-field-contrast--sunlight-readability)
+- [6. State Token Wiring: `enabled`, `readOnly`, and Validation Errors](#6-state-token-wiring-enabled-readonly-and-validation-errors)
+- [7. Complete Canonical Form Element with Design Tokens](#7-complete-canonical-form-element-with-design-tokens)
+
+---
+
 ## Introduction & Architectural Overview
 
 VertiGIS Studio Workflow forms execute across heterogeneous environments:

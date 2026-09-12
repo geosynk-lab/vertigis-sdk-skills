@@ -3,13 +3,9 @@ name: vertigis-workflow-sdk-skill
 description: >-
   Comprehensive guide and reference for developing custom activities and form
   elements using the VertiGIS Studio Workflow SDK and ArcGIS API for JavaScript.
-triggers:
-  - "Build a VertiGIS workflow activity"
-  - "Create a VertiGIS form element"
-  - "VertiGIS Studio Workflow customization"
-  - "initiate"
-  - "Setup Workflow AGENTS.md"
-  - "Initialize Workflow project rules"
+  Use this skill whenever developing, reviewing, or refactoring TypeScript workflow
+  activities, custom React form elements, MUI typography and design tokens,
+  7-directory component decomposition, or when running "initiate" and configuring AGENTS.md.
 ---
 
 # VertiGIS Studio Workflow SDK Skill

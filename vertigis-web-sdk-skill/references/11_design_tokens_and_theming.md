@@ -1,5 +1,28 @@
 # VertiGIS Studio Web SDK: Design Tokens & Dynamic Theming Architecture
 
+## Table of Contents
+- [Introduction & Architectural Overview](#introduction--architectural-overview)
+  - [The Shell Theming Mechanism](#the-shell-theming-mechanism)
+  - [The Critical Need for a Type-Safe Token Subsystem](#the-critical-need-for-a-type-safe-token-subsystem)
+- [Design Token Architecture](#design-token-architecture)
+  - [1. Safe Fallbacks & Zero Hardcoded Colors Rule](#1-safe-fallbacks--zero-hardcoded-colors-rule)
+  - [2. UI Design Tokens (`src/tokens/ui.ts`)](#2-ui-design-tokens-srctokensuits)
+  - [3. Typography Tokens (`src/tokens/typography.ts`)](#3-typography-tokens-srctokenstypographyts)
+  - [4. Color-Mix Utilities & Unified Barrel Export (`src/tokens/index.ts`)](#4-color-mix-utilities--unified-barrel-export-srctokensindexts)
+- [Dynamic Dual-Theme System](#dynamic-dual-theme-system)
+  - [1. Standalone Synchronous Theme Detection (`src/utils/isDarkTheme.ts`)](#1-standalone-synchronous-theme-detection-srcutilsisdarkthemets)
+  - [2. Canonical Reactive Hook (`src/hooks/useIsDarkTheme.ts`)](#2-canonical-reactive-hook-srchooksuseisdarkthemets)
+  - [3. MUI Theme Overrides & `VertiGisThemeProvider` Bridge (`src/tokens/muiTheme.ts`)](#3-mui-theme-overrides--vertigisthemeprovider-bridge-srctokensmuithemet)
+  - [4. Non-CSS Renderers Integration Patterns](#4-non-css-renderers-integration-patterns)
+- [Component Modularity Architecture](#component-modularity-architecture)
+  - [1. Standard 7-Directory Blueprint](#1-standard-7-directory-blueprint)
+  - [2. File Size Thresholds & Enforcement Rules](#2-file-size-thresholds--enforcement-rules)
+  - [3. Actionable Extraction Heuristics](#3-actionable-extraction-heuristics)
+  - [4. Concrete Before / After Refactoring Demonstration](#4-concrete-before--after-refactoring-demonstration)
+- [Pre-Review Audit Checklist](#pre-review-audit-checklist)
+
+---
+
 ## Introduction & Architectural Overview
 
 VertiGIS Studio Web provides an enterprise web mapping runtime built on React, MobX, TypeScript, and the ArcGIS API for JavaScript. In this architecture, visual presentation and brand identity are governed by an extensible **design token subsystem** injected dynamically into the host DOM by the VertiGIS shell.

@@ -3,14 +3,10 @@ name: vertigis-web-sdk-skill
 description: >-
   Comprehensive guide and reference for developing custom components, services,
   commands, operations, layouts, and workflows using the VertiGIS Studio Web SDK
-  and ArcGIS API for JavaScript.
-triggers:
-  - "Build a VertiGIS Web component"
-  - "Create a VertiGIS service"
-  - "VertiGIS Studio Web configuration"
-  - "initiate"
-  - "Setup VertiGIS AGENTS.md"
-  - "Initialize VertiGIS project rules"
+  and ArcGIS API for JavaScript. Use this skill whenever building or reviewing VertiGIS
+  Studio Web (VSW) libraries, React component models and views, MobX state,
+  LayoutElement wrappers, design tokens, dynamic light/dark theming, or when running
+  "initiate", setting up AGENTS.md, or initializing VertiGIS project rules.
 ---
 
 # VertiGIS Studio Web SDK Skill

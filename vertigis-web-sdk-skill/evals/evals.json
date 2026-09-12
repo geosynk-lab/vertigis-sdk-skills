@@ -1,0 +1,39 @@
+{
+  "skill_name": "vertigis-web-sdk-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a custom map click buffer widget in VertiGIS Web SDK that listens to map click events, calculates a 100m buffer graphic using @arcgis/core, and displays the coordinates in an MUI Card using Typography and design tokens.",
+      "expected_output": "A production-ready VertiGIS Studio Web component decomposed into a Model (*Model.ts) and View (*.tsx), wrapped with LayoutElement, using MUI Typography and safe fallback design tokens.",
+      "files": [],
+      "expectations": [
+        "Component model extends ComponentModelBase and uses @serializable decorators",
+        "React View wraps JSX inside LayoutElement imported from @vertigis/web/components",
+        "All textual elements use @mui/material Typography with variant and semantic color tokens, with zero raw HTML text elements",
+        "CSS custom properties include safe fallbacks (e.g., var(--primaryBackground, #ffffff))",
+        "ArcGIS class modules use default imports (e.g., import Graphic from '@arcgis/core/Graphic')"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create a singleton background service that polls a REST API every 30 seconds and exposes an observable count to other components in VertiGIS Studio Web.",
+      "expected_output": "A TypeScript service extending ServiceBase with MobX observables, clean lifecycle hook cleanup, and entry point registration.",
+      "files": [],
+      "expectations": [
+        "Service extends ServiceBase from @vertigis/web/services",
+        "Timer and subscriptions initialized in _onInitialize() are cleanly disposed in _onDestroy()",
+        "Service is registered in src/index.ts using registry.registerService()"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run initiate to inject VertiGIS Web SDK rules into AGENTS.md in an existing project repository.",
+      "expected_output": "Execution or recommendation of initiate_agents_md.py injecting directives between delimiting comments.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/initiate_agents_md.py helper script",
+        "Directives are bounded by <!-- vertigis-web-sdk:start --> and <!-- vertigis-web-sdk:end -->"
+      ]
+    }
+  ]
+}

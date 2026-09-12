@@ -1,0 +1,39 @@
+{
+  "skill_name": "vertigis-workflow-sdk-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create a custom inspection checklist form element in VertiGIS Workflow SDK decomposed according to the 7-directory blueprint.",
+      "expected_output": "A custom form element decomposed into sub-components, custom hooks, tokens, and utils, staying strictly under the 150-line ceiling per file.",
+      "files": [],
+      "expectations": [
+        "Orchestrator file (main.tsx) stays strictly under 150 lines",
+        "Uses 7-directory decomposition (components/, hooks/, tokens/, utils/, types/)",
+        "Enforces minimum 44x44px touch targets on interactive mobile controls",
+        "Uses @mui/material Typography with semantic color tokens rather than raw HTML tags",
+        "Wraps layout in an ErrorBoundary or FormElementErrorBoundary"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Implement a custom workflow activity that computes drive-time catchment areas and provides a dropdown input for travel mode.",
+      "expected_output": "A TypeScript workflow activity implementing execute with inline union dropdown types and defensive error handling.",
+      "files": [],
+      "expectations": [
+        "Dropdown input property uses inline union type (e.g., travelMode: 'driving' | 'walking' | string)",
+        "Execution block is wrapped in try/catch and throws structured errors",
+        "ArcGIS class modules use default imports (e.g., import Graphic from '@arcgis/core/Graphic')"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Run initiate to configure AGENTS.md with VertiGIS Workflow SDK directives.",
+      "expected_output": "Execution or recommendation of initiate_agents_md.py injecting workflow SDK directives.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/initiate_agents_md.py helper script",
+        "Directives are bounded by <!-- vertigis-workflow-sdk:start --> and <!-- vertigis-workflow-sdk:end -->"
+      ]
+    }
+  ]
+}

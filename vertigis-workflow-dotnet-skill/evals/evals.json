@@ -1,0 +1,40 @@
+{
+  "skill_name": "vertigis-workflow-dotnet-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Create an ArcGIS Pro Desktop workflow activity in C# that calculates the convex hull for selected map features using the ArcGIS Pro SDK.",
+      "expected_output": "A C# activity implementing IActivityHandler with defensive input parsing, async execution inside QueuedTask.Run, and static Action identifier.",
+      "files": [],
+      "expectations": [
+        "Activity implements IActivityHandler and returns Task<IDictionary<string, object?>>",
+        "Uses inputs.TryGetValue defensibly to prevent KeyNotFoundException",
+        "Wraps ArcGIS Pro API calls inside await QueuedTask.Run(...)",
+        "Defines public static string Action identifier",
+        "Catches exceptions and wraps them in descriptive error messages"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Build a custom Mobile form element with XAML and C# for VertiGIS Studio Mobile that renders a rating slider with custom feedback.",
+      "expected_output": "A XAML ContentComponent with C# code-behind and a companion registration activity extending RegisterCustomFormElementBase.",
+      "files": [],
+      "expectations": [
+        "Custom element extends ContentComponent from VertiGIS.Mobile.Forms",
+        "Companion registration activity extends RegisterCustomFormElementBase",
+        "XAML controls use accessible labels and touch targets suitable for field devices"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Generate the TypeScript designer stub for a .NET activity called CalculateParcelAssessmentActivity with @displayName, @category, and @action tags.",
+      "expected_output": "A TypeScript declaration stub file for the Workflow Designer toolbox with proper JSDoc annotations.",
+      "files": [],
+      "expectations": [
+        "Includes @action tag matching the C# static Action identifier",
+        "Includes @supportedApps VSM, VSD, VSS tag",
+        "Defines dropdown union inputs inline rather than external type aliases"
+      ]
+    }
+  ]
+}

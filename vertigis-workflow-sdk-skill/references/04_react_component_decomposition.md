@@ -1,5 +1,17 @@
 # VertiGIS Studio Workflow SDK: React Component Decomposition & Anti-God-Component Architecture
 
+## Table of Contents
+- [Overview & Architecture](#overview--architecture)
+- [1. File Size Ceilings & Heuristics](#1-file-size-ceilings--heuristics)
+  - [Extraction Heuristics](#extraction-heuristics)
+- [2. Standard 7-Directory Blueprint](#2-standard-7-directory-blueprint)
+- [3. Pillar 1: Custom Hooks (`hooks/`)](#3-pillar-1-custom-hooks-hooks)
+- [4. Pillar 2: Presentation Sub-Components (`components/`)](#4-pillar-2-presentation-sub-components-components)
+- [5. Pillar 3: Error Boundary Wrapper (`components/FormElementErrorBoundary.tsx`)](#5-pillar-3-error-boundary-wrapper-componentsformelementerrorboundarytsx)
+- [6. Pillar 4: Orchestration in `main.tsx`](#6-pillar-4-orchestration-in-maintsx)
+
+---
+
 ## Overview & Architecture
 
 When developing custom form elements for VertiGIS Studio Workflow (such as feature inspection forms, spatial query builders, defect checklists, or geometry sketch editors), components quickly degrade into monolithic "god components" exceeding 300–800 lines if state, UI, API calls, and styling are bundled into a single file.

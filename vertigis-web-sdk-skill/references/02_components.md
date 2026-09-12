@@ -1,5 +1,22 @@
 # VertiGIS Studio Web SDK: Custom Components
 
+## Table of Contents
+- [Overview](#overview)
+- [1. Creating the Component Model](#1-creating-the-component-model)
+  - [Advanced `@serializable` Options](#advanced-serializable-options)
+- [2. Creating the React View (MUI + LayoutElement Required)](#2-creating-the-react-view-mui--layoutelement-required)
+  - [Exposing Configuration Parameters to VertiGIS Web Designer](#-exposing-configuration-parameters-to-vertigis-web-designer)
+- [3. Creating and Registering Custom SVG Icons](#3-creating-and-registering-custom-svg-icons)
+- [4. Styling and Theming Rules](#4-styling-and-theming-rules)
+  - [4.1 Typography System](#41-typography-system)
+  - [4.2 Color & Design Tokens System](#42-color--design-tokens-system)
+- [5. Component Lifecycle Hooks](#5-component-lifecycle-hooks)
+- [6. UI Context and Component Services Injection](#6-ui-context-and-component-services-injection)
+- [7. React Error Boundaries (Enterprise Pattern)](#7-react-error-boundaries-enterprise-pattern)
+- [8. VertiGIS Web Component Hooks (`@vertigis/web/ui`)](#8-vertigis-web-component-hooks-vertigiswebui)
+
+---
+
 ## Overview
 A VertiGIS Web component consists of two synchronized parts:
 1. **The Model (`*Model.ts`)**: A class extending `ComponentModelBase` (or `ItemModelBase`) that handles business logic, state, and serialization.
