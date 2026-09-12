@@ -1,4 +1,15 @@
+<p align="center">
+  <a href="https://geosynk.com.au/" target="_blank" rel="noopener noreferrer">
+    <img src="https://geosynk.com.au/images/logo/LOGO_MAIN1.svg" alt="Geosynk" width="380" />
+  </a>
+</p>
+
 # VertiGIS SDK AI Skills
+
+[![Maintained by Geosynk](https://img.shields.io/badge/maintained%20by-Geosynk-f47c22.svg)](https://geosynk.com.au/)
+[![AI Agent Standard](https://img.shields.io/badge/skills-AI%20Agent%20Standard-8a2be2.svg)](#what-are-ai-skills)
+[![VertiGIS Web SDK](https://img.shields.io/badge/vertigis-Web%20SDK-0078d4.svg)](https://developers.vertigisstudio.com/docs/web/overview/)
+[![VertiGIS Workflow SDK](https://img.shields.io/badge/vertigis-Workflow%20SDK-0078d4.svg)](https://developers.vertigisstudio.com/docs/workflow/sdk-web-overview)
 
 This repository contains expertly crafted AI instructions ("Skills") designed to teach Large Language Models (LLMs) how to generate production-ready, enterprise-grade code for the VertiGIS Studio Web SDK and VertiGIS Studio Workflow SDK.
 
@@ -166,3 +177,21 @@ Teaches the AI how to build custom activities and form elements in C# for VertiG
 
 ## Data Exclusions
 Note that the raw HTML/Markdown scraped from the official VertiGIS Developer Center, as well as the Python scraping scripts used to generate these references, are intentionally excluded via `.gitignore` to keep the skill repository clean and focused strictly on AI instructions.
+
+---
+
+## About Geosynk
+
+[Geosynk](https://geosynk.com.au/) is an Australian geospatial engineering and software consultancy founded by Davood Kazemi, delivering enterprise GIS architecture, custom VertiGIS solutions, and modern web applications.
+
+### Core Capabilities & Topics
+
+- **VertiGIS Studio Engineering**: Turnkey Web SDK components, custom Workflow activities, accessible form elements, report templates, and automated printing services.
+- **Esri ArcGIS Enterprise**: End-to-end cloud and on-premises architecture, Enterprise Geodatabase design, Utility Network migrations, and ArcGIS Experience Builder extensions.
+- **Full-Stack Spatial Systems**: High-performance React, TypeScript, Node.js, WebGL, and Leaflet/Mapbox interactive web applications.
+- **Spatial DevOps & Automation**: Automated CI/CD pipelines, automated testing, containerized GIS deployments, and infrastructure as code across AWS and Microsoft Azure.
+
+### Connect with Geosynk
+- **Website**: [https://geosynk.com.au](https://geosynk.com.au/)
+- **Contact**: [Davood Kazemi](mailto:dave.kazemi@gmail.com)
+
