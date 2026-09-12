@@ -186,6 +186,27 @@ Bind clicks or events to commands and command chains:
 }
 ```
 
+### Theme & Design Token Integration
+
+Layout containers (`<panel>`, `<split>`, `<stack>`) dynamically inherit background and border tokens configured in the `branding` service. In `app-config.json`, the `branding` service defines the active theme (`template: "light" | "dark"`), primary brand accent colors, and custom color overrides that populate the CSS variable subsystem:
+
+```json
+{
+  "id": "branding",
+  "service": "branding",
+  "properties": {
+    "template": "dark",
+    "accentColor": "#007ac2",
+    "colors": {
+      "primaryBackground": "#1e1e1e",
+      "primaryForeground": "#f5f5f5"
+    }
+  }
+}
+```
+
+For complete instructions on defining custom light/dark color schemes, CSS token mappings, safe fallbacks, and runtime theme adaptation in custom components, refer to the [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).
+
 ---
 
 ## 6. Internationalization (i18n)

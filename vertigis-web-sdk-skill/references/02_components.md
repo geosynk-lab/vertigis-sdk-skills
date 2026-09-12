@@ -72,6 +72,8 @@ lastInspectedDate?: Date;
 
 ## 2. Creating the React View (MUI + LayoutElement Required)
 
+> 📐 **Enterprise Modularity Standard**: For enterprise components, keep `main.tsx` under 150 lines (hard ceiling of 250 lines). Decompose UI elements into `components/`, stateful logic and event subscriptions into `hooks/`, and zero-dependency helpers into `utils/`. See [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md#component-modularity) for the complete directory blueprint and extraction heuristics.
+
 Views MUST:
 - Use MUI components (`@mui/material`) — **NEVER use standard HTML text tags (`<span>`, `<p>`, `<h1>`-`<h6>`)**
 - Use VertiGIS CSS variable tokens — **NEVER hardcode hex/RGB colors**
@@ -126,17 +128,17 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                 <Box
                     sx={{
                         p: 2,
-                        backgroundColor: "var(--primaryBackground)",
+                        backgroundColor: "var(--primaryBackground, #ffffff)",
                         borderRadius: "var(--borderRadius, 4px)",
-                        border: "1px solid var(--primaryBorder)",
+                        border: "1px solid var(--primaryBorder, #e0e0e0)",
                     }}
                 >
                     {/* Widget Title with MUI Typography */}
                     <Typography
                         variant="h6"
                         sx={{
-                            color: "var(--primaryForeground)",
-                            fontFamily: "var(--defaultFont)",
+                            color: "var(--primaryForeground, #212121)",
+                            fontFamily: 'var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)',
                             mb: 0.5,
                         }}
                     >
@@ -146,7 +148,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                     {/* Section Subtitle */}
                     <Typography
                         variant="subtitle2"
-                        sx={{ color: "var(--secondaryForeground)", mb: 1.5 }}
+                        sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}
                     >
                         Interactive Counter & Diagnostics
                     </Typography>
@@ -156,13 +158,13 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                         sx={{
                             p: 1.5,
                             mb: 2,
-                            backgroundColor: "var(--secondaryBackground)",
-                            border: "1px solid var(--primaryBorder)",
+                            backgroundColor: "var(--secondaryBackground, #f5f5f5)",
+                            border: "1px solid var(--primaryBorder, #e0e0e0)",
                             borderRadius: "var(--borderRadius, 4px)",
                         }}
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                            <Typography variant="body1" sx={{ color: "var(--primaryForeground)" }}>
+                            <Typography variant="body1" sx={{ color: "var(--primaryForeground, #212121)" }}>
                                 Current Count: <strong>{model.count}</strong>
                             </Typography>
                             <Typography
@@ -171,8 +173,8 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                                     px: 1,
                                     py: 0.25,
                                     borderRadius: "4px",
-                                    backgroundColor: "var(--alertGreenBackground)",
-                                    color: "var(--alertGreenForeground)",
+                                    backgroundColor: "var(--alertGreenBackground, #edf7ed)",
+                                    color: "var(--alertGreenForeground, #2e7d32)",
                                     fontWeight: "bold",
                                 }}
                             >
@@ -180,7 +182,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                             </Typography>
                         </Stack>
 
-                        <Typography variant="body2" sx={{ color: "var(--secondaryForeground)", mb: 1.5 }}>
+                        <Typography variant="body2" sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}>
                             Configuration parameter: {customConfigParam}
                         </Typography>
 
@@ -188,10 +190,10 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                             variant="contained"
                             onClick={handleAction}
                             sx={{
-                                backgroundColor: "var(--emphasizedButtonBackground, var(--primaryAccent))",
-                                color: "var(--buttonForeground)",
+                                backgroundColor: "var(--emphasizedButtonBackground, var(--primaryAccent, #007ac2))",
+                                color: "var(--buttonForeground, #ffffff)",
                                 "&:hover": {
-                                    backgroundColor: "var(--primaryAccentHover)",
+                                    backgroundColor: "var(--primaryAccentHover, #005a91)",
                                 },
                             }}
                         >
@@ -201,7 +203,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 
                     {/* Microcopy / Caption Metadata */}
                     {model.map && (
-                        <Typography variant="caption" sx={{ color: "var(--secondaryForeground)", display: "block" }}>
+                        <Typography variant="caption" sx={{ color: "var(--secondaryForeground, #666666)", display: "block" }}>
                             Attached Map ID: {model.map.id}
                         </Typography>
                     )}
@@ -273,20 +275,20 @@ All textual content in VertiGIS Web components must be rendered through `@mui/ma
 #### MUI Typography Variant Reference
 | Variant | Semantic Purpose | Typical Usage | Standard Foreground Token |
 | :--- | :--- | :--- | :--- |
-| `h5`, `h6` | Top-level container & widget headers | Widget titles, modal headlines, primary card headers | `var(--primaryForeground)` / `var(--primaryAccent)` |
-| `subtitle1`, `subtitle2` | Section & group headings | Panel section titles, group headers, card subheadings | `var(--secondaryForeground)` |
-| `body1` | Primary body text | Main descriptions, form labels, list item text | `var(--primaryForeground)` |
-| `body2` | Secondary body text | Explanatory notes, auxiliary content, secondary descriptions | `var(--secondaryForeground)` |
-| `caption` | Microcopy & metadata | Timestamps, coordinate values, data source attributions | `var(--secondaryForeground)` |
-| `overline` | Status badges & category tags | Uppercase category labels, status badges, chip text | `var(--primaryForeground)` / Alert foregrounds |
+| `h5`, `h6` | Top-level container & widget headers | Widget titles, modal headlines, primary card headers | `var(--primaryForeground, #212121)` / `var(--primaryAccent, #007ac2)` |
+| `subtitle1`, `subtitle2` | Section & group headings | Panel section titles, group headers, card subheadings | `var(--secondaryForeground, #666666)` |
+| `body1` | Primary body text | Main descriptions, form labels, list item text | `var(--primaryForeground, #212121)` |
+| `body2` | Secondary body text | Explanatory notes, auxiliary content, secondary descriptions | `var(--secondaryForeground, #666666)` |
+| `caption` | Microcopy & metadata | Timestamps, coordinate values, data source attributions | `var(--secondaryForeground, #666666)` |
+| `overline` | Status badges & category tags | Uppercase category labels, status badges, chip text | `var(--primaryForeground, #212121)` / Alert foregrounds |
 
 #### Typography Rules & Best Practices
 1. **Zero Raw HTML Text Elements**: Always replace `<p>` with `<Typography variant="body1">` or `<Typography variant="body2">`, `<span>` with `<Typography variant="caption">` or appropriate variant, and `<h1>`-`<h6>` with `<Typography variant="h5">` or `<Typography variant="h6">`.
-2. **Font Family Token**: Always inherit typography via `var(--defaultFont)` (configured automatically across MUI components in the host shell).
+2. **Font Family Token**: Always inherit typography via `var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)` (configured automatically across MUI components in the host shell).
 3. **Semantic Text Color Tokens**: Pair every Typography variant with semantic foreground tokens via `sx`:
-   - High-contrast text: `sx={{ color: "var(--primaryForeground)" }}`
-   - Secondary / muted text: `sx={{ color: "var(--secondaryForeground)" }}`
-   - Inactive / disabled text: `sx={{ color: "var(--disabledForeground)" }}`
+   - High-contrast text: `sx={{ color: "var(--primaryForeground, #212121)" }}`
+   - Secondary / muted text: `sx={{ color: "var(--secondaryForeground, #666666)" }}`
+   - Inactive / disabled text: `sx={{ color: "var(--disabledForeground, #9e9e9e)" }}`
 4. **Layout Wrappers**: Use `<Box>` and `<Stack>` to arrange typography elements instead of unstructured text containers.
 
 ---
@@ -295,27 +297,34 @@ All textual content in VertiGIS Web components must be rendered through `@mui/ma
 
 VertiGIS Studio Web utilizes CSS custom properties (variables) dynamically injected by the host shell. These tokens automatically adapt when users switch between light and dark themes, or when custom organization branding is applied in the VertiGIS Studio Web Designer.
 
+> 🎨 **Design Token Subsystem**: Instead of relying on raw CSS variable strings without fallbacks, import type-safe tokens from `src/tokens`:
+> ```tsx
+> import { UI_TOKENS, alphaMix } from "../../tokens";
+> <Box sx={{ backgroundColor: UI_TOKENS.surface.primary, border: `1px solid ${UI_TOKENS.border.primary}` }} />
+> ```
+> For full token implementations, safe fallbacks (e.g., `var(--primaryBackground, #ffffff)`), `color-mix()` patterns, dynamic dark theme detection (`useIsDarkTheme`), and MUI `ThemeProvider` integration, see the dedicated [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).
+
 #### Complete Token Reference Catalogue
 | Token Category | CSS Variable | Semantic Usage |
 | :--- | :--- | :--- |
-| **Surfaces & Backgrounds** | `var(--primaryBackground)` | Main surface for panels, drawers, widgets, and dialogs. |
-| | `var(--secondaryBackground)` | Nested cards, group containers, zebra striping, and inset areas. |
-| **Borders & Dividers** | `var(--primaryBorder)` | Structural container borders, dividers, and card outlines. |
-| **Foregrounds & Text** | `var(--primaryForeground)` | High-contrast text, primary icon fills, and active labels. |
-| | `var(--secondaryForeground)` | Secondary text, subheadings, captions, and muted icons. |
-| | `var(--disabledForeground)` | Inactive text, disabled actions, and placeholder copy. |
-| **Accents & Highlights** | `var(--primaryAccent)` | Primary brand highlight, active tab indicators, selected item accents. |
-| | `var(--primaryAccentHover)` | Hover state for accent buttons, links, and actionable highlights. |
-| **Controls & Buttons** | `var(--emphasizedButtonBackground)` | Primary CTA button background fill. |
-| | `var(--buttonForeground)` | High-contrast text and icon color within buttons. |
-| | `var(--itemHoverBackground)` | Hover background for list items, menu items, and clickable rows. |
-| | `var(--itemSelectedBackground)` | Active or selected background for list items and tree nodes. |
-| **Alerts & Status Feedback** | `var(--alertRedBackground)` / `var(--alertRedForeground)` | Critical errors, destructive actions, failure notifications. |
-| | `var(--alertGreenBackground)` / `var(--alertGreenForeground)` | Success confirmations, online indicators, valid states. |
-| | `var(--alertAmberBackground)` / `var(--alertAmberForeground)` | Warnings, caveats, pending/in-progress indicators. |
-| | `var(--alertGrayBackground)` / `var(--alertGrayForeground)` | Informational badges, neutral notifications, muted tags. |
-| **Typography & Radius** | `var(--defaultFont)` | System font stack inherited across all typography elements. |
-| | `var(--borderRadius)` | Standard corner radius for cards, buttons, and panels (default: 4px). |
+| **Surfaces & Backgrounds** | `var(--primaryBackground, #ffffff)` | Main surface for panels, drawers, widgets, and dialogs. |
+| | `var(--secondaryBackground, #f5f5f5)` | Nested cards, group containers, zebra striping, and inset areas. |
+| **Borders & Dividers** | `var(--primaryBorder, #e0e0e0)` | Structural container borders, dividers, and card outlines. |
+| **Foregrounds & Text** | `var(--primaryForeground, #212121)` | High-contrast text, primary icon fills, and active labels. |
+| | `var(--secondaryForeground, #666666)` | Secondary text, subheadings, captions, and muted icons. |
+| | `var(--disabledForeground, #9e9e9e)` | Inactive text, disabled actions, and placeholder copy. |
+| **Accents & Highlights** | `var(--primaryAccent, #007ac2)` | Primary brand highlight, active tab indicators, selected item accents. |
+| | `var(--primaryAccentHover, #005a91)` | Hover state for accent buttons, links, and actionable highlights. |
+| **Controls & Buttons** | `var(--emphasizedButtonBackground, var(--primaryAccent, #007ac2))` | Primary CTA button background fill. |
+| | `var(--buttonForeground, #ffffff)` | High-contrast text and icon color within buttons. |
+| | `var(--itemHoverBackground, rgba(0, 0, 0, 0.04))` | Hover background for list items, menu items, and clickable rows. |
+| | `var(--itemSelectedBackground, rgba(0, 122, 194, 0.12))` | Active or selected background for list items and tree nodes. |
+| **Alerts & Status Feedback** | `var(--alertRedBackground, #fdecea)` / `var(--alertRedForeground, #d32f2f)` | Critical errors, destructive actions, failure notifications. |
+| | `var(--alertGreenBackground, #edf7ed)` / `var(--alertGreenForeground, #2e7d32)` | Success confirmations, online indicators, valid states. |
+| | `var(--alertAmberBackground, #fff4e5)` / `var(--alertAmberForeground, #ed6c02)` | Warnings, caveats, pending/in-progress indicators. |
+| | `var(--alertGrayBackground, #f4f4f4)` / `var(--alertGrayForeground, #616161)` | Informational badges, neutral notifications, muted tags. |
+| **Typography & Radius** | `var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)` | System font stack inherited across all typography elements. |
+| | `var(--borderRadius, 4px)` | Standard corner radius for cards, buttons, and panels (default: 4px). |
 
 #### GIS Color Selection Principles
 - **Map-First Visual Hierarchy**: Keep UI chrome and panels subdued (`--primaryBackground` and `--secondaryBackground` with neutral `--primaryBorder`) so that spatial map layers, vector symbology, and GIS overlays remain the dominant visual focus.
@@ -414,7 +423,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <Box sx={{ p: 2, backgroundColor: "var(--alertRedBackground)", color: "white", borderRadius: 1 }}>
+                <Box sx={{ p: 2, backgroundColor: "var(--alertRedBackground, #fdecea)", color: "var(--alertRedForeground, #d32f2f)", borderRadius: "var(--borderRadius, 4px)" }}>
                     <Typography variant="subtitle2">
                         {this.props.fallbackMessage || "This widget encountered an error."}
                     </Typography>
@@ -461,7 +470,7 @@ export default function MyWidget(props: LayoutElementProperties<MyWidgetModel>) 
     return (
         <LayoutElement {...props}>
             {!model.hidden ? (
-                <Box sx={{ p: 2, backgroundColor: "var(--primaryBackground)" }}>
+                <Box sx={{ p: 2, backgroundColor: "var(--primaryBackground, #ffffff)" }}>
                     <Typography variant="body1">Content is visible!</Typography>
                     <Button variant="contained" onClick={() => (model.hidden = true)}>
                         Hide

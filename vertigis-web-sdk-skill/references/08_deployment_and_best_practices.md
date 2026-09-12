@@ -71,3 +71,31 @@ This generates the production output in the `dist/` directory, typically includi
       return QRCode.toDataURL(text);
   }
   ```
+
+### E. Strict Component Modularity & File Size Discipline
+- **Strict File Size Limits**: Target **150 lines** per file (soft limit); enforce a **250-line hard ceiling**. Files exceeding 250 lines fail code quality reviews and should be decomposed immediately.
+- **Standard 7-Folder Directory Blueprint**: For non-trivial components, decompose code into dedicated directories:
+  - `components/`: Presentational sub-components and UI fragments (< 100–150 lines each).
+  - `hooks/`: Custom React hooks encapsulating stateful logic, event subscriptions, and queries.
+  - `services/`: Component-scoped API clients or service integrators.
+  - `utils/`: Zero-dependency pure functions (formatting, date calculations, math) for 100% testability.
+  - `helpers/`: Specialized mapping or geometry helper functions.
+  - `tokens/`: Component-level token overrides or aliases.
+  - `types/`: Type definitions, interfaces, and DTO contracts.
+- **Model vs View Separation**:
+  - **MobX Models (`*Model.ts`)**: Extend `ComponentModelBase`. Handle data persistence (`@serializable`), state (`@observable`), service injection (`@inject`), and lifecycle hooks (`_onInitialize`, `_onDestroy`). Strictly prohibited from importing React, JSX, or accessing DOM APIs.
+  - **React Views (`*.tsx`)**: High-level coordinators wrapped in `observer()`. Render layout slots (`<LayoutElement>`), provide error containment (`<ErrorBoundary>`), and compose sub-components. Delegate stateful workflows to custom hooks.
+- **Actionable Extraction Heuristics**:
+  - If a JSX block exceeds 50 lines or represents an independent UI section (header, modal, table), extract it into `components/`.
+  - If multiple hooks (`useState`, `useEffect`, `useWatch`) coordinate a feature, extract them into a custom hook in `hooks/`.
+  - If logic is pure calculation or formatting, isolate it into a pure function in `utils/`.
+- For complete directory structure blueprints, MobX vs View boundary rules, and before/after refactoring examples, see [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md#component-modularity).
+
+### F. Design Token Fallbacks & Dual-Theme Safety
+- **Safe Default Fallbacks**: Always provide WCAG AA compliant fallback values when referencing CSS variables (e.g. `var(--primaryBackground, #ffffff)` or `var(--primaryForeground, #212121)`). This ensures robust rendering in offline unit tests (Vitest/Jest), Storybook sandboxes, and initial shell mounting before the `branding` service injects theme variables.
+- **Dynamic Color Mixing**: Use `color-mix(in srgb, ...)` (or `alphaMix()` / `surfaceMix()` helpers) for derived tints, hover states, muted borders, and transparent overlays. Never use static RGBA values like `rgba(0, 0, 0, 0.08)`, which fail in dark themes.
+- **Dual-Context Theme Detection**:
+  - In React components: Use the reactive `useIsDarkTheme()` hook to track DOM theme mutations and OS preferences.
+  - In non-CSS contexts (Plotly charts, HTML5 Canvas, SVG generators, jsPDF exports): Call the standalone `isDarkTheme()` synchronous utility to inspect theme classes, background luminance, and OS media queries.
+- **MUI Theme Harmonization**: Wrap composite MUI controls (`<Slider>`, `<Switch>`, `<DatePicker>`, `<Select>`) in `VertiGisThemeProvider` (or configure via `createVertiGisMuiTheme`) so internal SVG icons, canvas elements, and surfaces synchronize with VertiGIS branding rather than default MUI blues.
+- For complete token dictionaries, helper implementations, theme hook source code, and MUI theme setup, see the [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).

@@ -17,7 +17,7 @@ END_MARKER = "<!-- vertigis-web-sdk:end -->"
 
 DIRECTIVES_BODY = """# VertiGIS Studio Web SDK Development Directives
 
-> **Mandatory Agent Directive**: Whenever you make any change to or create any web component in this repository, ALWAYS check and verify it against VertiGIS Web SDK standards (LayoutElement wrapper, MobX observer, MUI components with sx tokens, zero hardcoded colors, ErrorBoundary wrapper).
+> **Mandatory Agent Directive**: Whenever you make any change to or create any web component in this repository, ALWAYS check and verify it against VertiGIS Web SDK standards (LayoutElement wrapper, MobX observer, MUI components with sx tokens, zero hardcoded colors, design token architecture, dual-theme adaptation, strict 150–250 line component modularity, and ErrorBoundary wrapper).
 
 ## 1. Typography System
 - **Strict ban on raw HTML text elements**: Never use raw `<span>`, `<p>`, or `<h1>`-`<h6>` tags.
@@ -27,39 +27,43 @@ DIRECTIVES_BODY = """# VertiGIS Studio Web SDK Development Directives
   - `body1`, `body2`: Primary and secondary descriptive body text.
   - `caption`, `overline`: Microcopy, timestamps, metadata labels, and status badges.
 - **Semantic Text Color Tokens**: Always pair Typography variants with semantic foreground tokens via `sx`:
-  - Primary text: `color: "var(--primaryForeground)"`
-  - Secondary/muted text: `color: "var(--secondaryForeground)"`
-  - Inactive/disabled text: `color: "var(--disabledForeground)"`
+  - Primary text: `color: "var(--primaryForeground, #1e1e1e)"`
+  - Secondary/muted text: `color: "var(--secondaryForeground, #666666)"`
+  - Inactive/disabled text: `color: "var(--disabledForeground, #9e9e9e)"`
 - **Font Family**: Use `fontFamily: "var(--defaultFont)"` (inherited automatically through MUI components).
 
-## 2. Color & Design Tokens System
+## 2. Color & Design Tokens Subsystem
 - **Zero Hardcoded Colors**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values for UI chrome, backgrounds, text, and borders.
-- **Token Reference Catalogue**:
-  - **Surfaces & Backgrounds**:
-    - `var(--primaryBackground)`: Main widget, panel, and dialog surface.
-    - `var(--secondaryBackground)`: Nested card, container, or contrasting surface.
-  - **Borders & Dividers**:
-    - `var(--primaryBorder)`: Subtle division lines, container outlines, and card borders.
-  - **Foregrounds & Text**:
-    - `var(--primaryForeground)`: High-contrast primary text, icons, and active symbols.
-    - `var(--secondaryForeground)`: Muted secondary text, labels, and captions.
-    - `var(--disabledForeground)`: Inactive or disabled text and control icons.
-  - **Accents & Highlights**:
-    - `var(--primaryAccent)`: Brand highlight, active tabs, selected states, and focus rings.
-    - `var(--primaryAccentHover)`: Hover state for primary accent elements.
-  - **Controls & Interactive Elements**:
-    - `var(--emphasizedButtonBackground)`: Primary CTA button fill.
-    - `var(--buttonForeground)`: High-contrast text and icon color on button surfaces.
-    - `var(--itemHoverBackground)`: List items, table rows, and menu hover fill.
-    - `var(--itemSelectedBackground)`: Selected list item and menu highlight.
-  - **Alerts & Status Feedback**:
-    - `var(--alertRedBackground)` / `var(--alertRedForeground)`: Critical errors and destructive alerts.
-    - `var(--alertGreenBackground)` / `var(--alertGreenForeground)`: Success confirmations and online status.
-    - `var(--alertAmberBackground)` / `var(--alertAmberForeground)`: Warnings, cautions, and pending states.
-    - `var(--alertGrayBackground)` / `var(--alertGrayForeground)`: Neutral notifications and informational badges.
-- **GIS Design Principles**: Keep UI chrome neutral and subdued so the GIS map canvas remains the focal point. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text) across both light and dark theme modes.
+- **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`) to ensure resilient rendering in headless, disconnected, or preview environments.
+- **Standardized Token Architecture**: Group all tokens under a `tokens/` directory:
+  - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, and alert tokens.
+  - `tokens/typography.ts`: Typography hierarchy, font families, and weights.
+  - `tokens/index.ts`: Central barrel export.
+- **Dynamic Dual-Theme Adaptation**:
+  - Use `color-mix(in srgb, ...)` for derived tints, hover states, muted borders, and transparent overlays to adapt automatically to light and dark themes without manual CSS overrides.
+  - Use the canonical reactive `useIsDarkTheme()` hook for DOM/shell theme detection.
+  - Use `isDarkTheme()` standalone utility for non-CSS contexts (Plotly, canvas renderers, third-party iframe bridges, PDF exports).
+- **MUI Theme Integration**: Apply `createTheme` overrides and `ThemeProvider` to align composite controls (sliders, toggle buttons, pickers) with VertiGIS shell branding.
+- **GIS Visual Hierarchy**: Keep UI chrome neutral and subdued so the GIS map canvas remains the focal point. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text).
 
-## 3. Component Architecture & Lifecycle
+## 3. Strict Component Modularity & Anti-God-Component Architecture
+- **Strict File Size Thresholds**: Max 150–250 lines per file. Any file exceeding 250 lines MUST be refactored and decomposed.
+- **Standard Directory Blueprint**: Decompose complex components into:
+  - `components/`: Presentational, stateless sub-components.
+  - `hooks/`: Custom React hooks for state, lifecycle subscriptions, and business logic.
+  - `services/`: Component-level services and integrations.
+  - `utils/` / `helpers/`: Pure functions, calculations, and zero-dependency helpers.
+  - `tokens/`: Design tokens and theme mappings.
+  - `types/`: Type contracts, interfaces, and serialization models.
+- **Model vs View Separation**:
+  - MobX Component Models (`*Model.ts`): State, observables, service injection, and lifecycle hooks (`_onInitialize()`, `_onDestroy()`).
+  - React Views (`*.tsx`): Visual rendering, layout slotting wrapped in `<LayoutElement {...props}>`, `observer()`, and `<ErrorBoundary>`.
+- **Extraction Heuristics**:
+  - Extract sub-views when JSX nesting exceeds 3 levels or individual visual sections emerge.
+  - Extract event listeners, timers, and data operations into custom hooks.
+  - Extract data formatting and business logic into pure, testable utility functions.
+
+## 4. Component Architecture & Lifecycle
 - **`<LayoutElement {...props}>` Root**: Every React component view MUST wrap all JSX within `<LayoutElement {...props}>` from `@vertigis/web/components` for layout slotting and Designer support.
 - **MobX `observer()`**: Wrap all React views that read model observables with `observer()` from `mobx-react-lite`.
 - **`<ErrorBoundary>` Wrapping**: Wrap custom widget contents in an `<ErrorBoundary>` component to isolate runtime faults and protect host application stability.
