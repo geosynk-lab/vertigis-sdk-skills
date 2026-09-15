@@ -117,3 +117,24 @@ When referencing secured Web Maps or operational layers hosted in an on-premise 
   *(Note: Omitting `appId` or `accountId` causes VertiGIS Web to reject the config and fall back to the built-in basic username/password modal).*
 - **Trusted Servers & CORS**: Ensure the portal domain is registered in `esriConfig.request.trustedServers` and that `allowedOrigins` in Portal Administrator includes the client origin.
 - **Automated Tooling**: In projects created with `@geosynk/vertigis-web-sdk`, run `npm run auth:portal` to interactively configure portal parameters and web map item IDs without modifying core code. Revert to standard public maps anytime with `npm run auth:portal -- --reset`.
+
+### H. Lifecycle Teardown & Designer Deployment Packaging Traps
+
+When deploying or publishing a custom web application through **VertiGIS Studio Web Designer**, Designer performs a packaging process that instantiates, validates, and disposes component models to compile optimized application configuration.
+
+#### The `TypeError: this._handles.destroy is not a function` Deployment Failure
+- **Symptom**: Local development (`npm start`) succeeds, but publishing or deploying the app in Designer crashes with:
+  ```
+  TypeError: this._handles.destroy is not a function
+  ```
+- **Root Cause**:
+  1. Ancestor `InitializableBase` incorporates `HandlesMixin` (`@vertigis/arcgis-extensions/support/HandlesMixin.js`), which establishes an internal `_handles = new Handles;` instance (`@arcgis/core/core/Handles`) and calls `this._handles.destroy()` inside its `destroy()` lifecycle method.
+  2. In modern TypeScript projects (`target: "es2022"`, `useDefineForClassFields: true`), declaring a custom field named `_handles` (e.g. `private _handles: any[] = []` or `private _handles: __esri.Handle[] = []`) compiles to an instance field initializer that runs **after** `super()`, replacing the base `Handles` instance with a plain JavaScript `Array`.
+  3. When Designer tears down component models during publication packaging, calling `model.destroy()` invokes `super.destroy()` -> `this._handles.destroy()`. Since `Array.prototype.destroy` does not exist, publishing crashes catastrophically.
+  4. In addition, calling `await super._onDestroy()` *first* prematurely initiates parent teardown before the child component releases its own resources.
+- **Remediation & Pre-Deployment Audit Checklist**:
+  - [ ] Search the codebase for `_handles` definitions: `grep -rn "_handles" src/`.
+  - [ ] Rename any custom handle collections to domain-specific names (e.g., `_eventHandles`, `_sketchHandles`, `_disposables`).
+  - [ ] Alternatively, register handles directly into the inherited base instance via `this._handles.add(...)` without declaring a child property.
+  - [ ] Verify symmetric lifecycle sequencing: `await super._onInitialize()` MUST be called **first** in `_onInitialize()`; child resource cleanup must run **first** and `await super._onDestroy()` MUST be called **last** in `_onDestroy()`.
+

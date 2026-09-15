@@ -47,6 +47,20 @@
         "Component manifest implements applyLayoutDesignerSettings writing attributes back via args.node.attributes.set() and calling model.updateConfig()",
         "Component model includes an updateConfig() method to update observable properties dynamically"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "Create a custom sketch tool component model in VertiGIS Web SDK that manages SketchViewModel event handles, adheres to the symmetric lifecycle contract, and prevents the 'this._handles.destroy is not a function' deployment crash.",
+      "expected_output": "A TypeScript ComponentModelBase class that defines domain-specific handle collections (e.g. _sketchHandles), calls await super._onInitialize() first, cleans up sketch handles before calling await super._onDestroy() last, and avoids clobbering base _handles.",
+      "files": [],
+      "expectations": [
+        "Component model extends ComponentModelBase",
+        "Does not declare a field named _handles (avoids clobbering base HandlesMixin _handles property)",
+        "Uses domain-specific handle collection (e.g., _sketchHandles or _eventHandles) or leverages base this._handles without redeclaring it",
+        "Calls await super._onInitialize() first during initialization",
+        "Cleans up child handles and resources before calling await super._onDestroy() last during teardown"
+      ]
     }
   ]
 }
+

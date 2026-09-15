@@ -29,6 +29,7 @@ You MUST adhere to the following rules without exception:
 7. **MobX Observer**: Every React component that reads model properties MUST be wrapped with `observer()` from `mobx-react-lite`.
 8. **ArcGIS Import Rules**: Use default imports for class modules (`import Graphic from "@arcgis/core/Graphic"`). Use star imports for utility/function modules to avoid AMD errors (`import * as projection from "@arcgis/core/geometry/projection"`).
 9. **Enterprise Reliability & Theme Safety**: Wrap custom React widgets in `ErrorBoundary` components to prevent layout crashes. All subscriptions, intervals, and MobX reactions initialized in `_onInitialize()` MUST be cleanly disposed in `_onDestroy()`. Wrap Workflow Activity `execute` blocks in `try/catch` and throw structured errors. Add `aria-label` to interactive MUI components. Ensure theme safety across dynamic light/dark switches.
+10. **Lifecycle Contract & Reserved Property Protection (`_handles` Safety)**: Subclasses of `ComponentModelBase` and `ModelBase` MUST strictly adhere to the symmetric lifecycle contract: (1) In `_onInitialize()`, ALWAYS invoke `await super._onInitialize()` **first** before initializing component-specific resources, subscriptions, or layers. (2) In `_onDestroy()`, ALWAYS clean up component-specific resources, subscriptions, event listeners, sketch view models, and map graphics **first**, and invoke `await super._onDestroy()` **last** (symmetric teardown). (3) **Strict ban on declaring a custom `_handles` field**: Ancestor `InitializableBase` incorporates `HandlesMixin` (`@vertigis/arcgis-extensions/support/HandlesMixin.js`), which instantiates `this._handles` as an `@arcgis/core/core/Handles` instance and calls `this._handles.destroy()` on disposal. Under ES2022+ class field semantics (`useDefineForClassFields: true`), declaring a custom field named `_handles` (e.g., `private _handles: any[] = []`) silently overwrites the parent's `Handles` instance with a plain Array. When VertiGIS Studio Web Designer tears down models during app deployment or publishing packaging, `model.destroy()` triggers `super.destroy()`, crashing with `TypeError: this._handles.destroy is not a function`. Custom handle collections MUST use domain-specific names (e.g., `_eventHandles`, `_sketchHandles`, `_disposables`) or cleanly register into the inherited base `this._handles.add(...)`.
 
 ## 4. Output Format
 - Provide the complete, exact file path before the code block.
@@ -54,13 +55,13 @@ When the user triggers this skill or enters `initiate`:
 | :--- | :--- | :--- |
 | **Interactive Tooling** | [Scaffolding & Scripts](./references/10_interactive_scaffolding_and_tooling.md) | Discovery flow, `initiate` command (`AGENTS.md` injection), code audit checklist, SSL certificates, `start.bat`, `build.bat`. |
 | **Architecture & CLI** | [Overview & Concepts](./references/01_overview_and_concepts.md) | System model, CLI scaffolding, project structure, `src/index.ts`. |
-| **Custom Components** | [Components Guide](./references/02_components.md) | Component models (`*Model.ts`), React views (`*.tsx`), `LayoutElement`, `observer()`, MUI usage. |
+| **Custom Components** | [Components Guide](./references/02_components.md) | Component models (`*Model.ts`), React views (`*.tsx`), `LayoutElement`, `observer()`, MUI usage, symmetric lifecycle contracts (`_onInitialize` first, `_onDestroy` last), and `_handles` clobbering prevention. |
 | **Custom Services** | [Services Guide](./references/03_services.md) | Singletons, `ServiceBase`, state management, background timers, service injection. |
 | **Commands & Operations** | [Commands & Operations](./references/04_commands_and_operations.md) | `registerCommandHandler`, `registerOperationHandler`, `canExecute`, built-in commands reference. |
 | **Events & Observability** | [Events & Observability](./references/05_events_and_observability.md) | Lifecycle events (`app.initialized`, `map.click`), MobX observables, event subscriptions. |
 | **Layout & App Config** | [Layout & Configuration](./references/06_layout_and_config.md) | `app.json` layout hierarchy, `app-config.json` model binding (`$ref`, `$eval`), theming, i18n. |
 | **Workflow Web SDK** | [Workflow Web SDK](./references/07_workflow_web_sdk.md) | Custom workflow activities (`IActivityHandler`), custom form elements, ArcGIS JS API integration. |
-| **Deployment** | [Deployment & Best Practices](./references/08_deployment_and_best_practices.md) | `npm run build`, hosting on CDN/SaaS, ArcGIS Enterprise items, CORS, bundling. |
+| **Deployment** | [Deployment & Best Practices](./references/08_deployment_and_best_practices.md) | `npm run build`, hosting on CDN/SaaS, ArcGIS Enterprise items, CORS, bundling, and Designer deployment packaging lifecycle crash prevention. |
 | **Tutorials & Recipes** | [Tutorials & Recipes](./references/09_tutorials_and_recipes.md) | Custom map click handling, configurable widgets, triggering workflows. |
 | **Design Tokens & Theming** | [Design Tokens & Theming](./references/11_design_tokens_and_theming.md) | Design token subsystem (`tokens/ui.ts`, `tokens/typography.ts`, `tokens/index.ts`), safe fallbacks (`var(--primaryBackground, #ffffff)`), dynamic dual-theming (`color-mix`), `useIsDarkTheme` hook, standalone `isDarkTheme()`, MUI `ThemeProvider`, anti-god-component modularity standards (150–250 lines ceiling, 7-directory blueprint, extraction heuristics). |
 
@@ -120,6 +121,10 @@ Every UI widget consists of a paired **Model** and **React View**:
 import { ComponentModelBase, serializable, importModel } from "@vertigis/web/models";
 import { MapModel } from "@vertigis/web/mapping";
 
+export interface CustomHandle {
+    remove(): void;
+}
+
 @serializable
 export class CustomWidgetModel extends ComponentModelBase {
     @serializable
@@ -128,8 +133,22 @@ export class CustomWidgetModel extends ComponentModelBase {
     @importModel("map-extension")
     map: MapModel | undefined;
 
+    // RULE 10: NEVER name this `_handles` (would overwrite parent HandlesMixin and crash destroy())
+    private _eventHandles: CustomHandle[] = [];
+
+    // Lifecycle: Base FIRST
     protected async _onInitialize(): Promise<void> {
         await super._onInitialize();
+        // Register subscriptions or handles
+    }
+
+    // Lifecycle: Child cleanup FIRST, super LAST
+    protected async _onDestroy(): Promise<void> {
+        for (const handle of this._eventHandles) {
+            handle.remove();
+        }
+        this._eventHandles = [];
+        await super._onDestroy();
     }
 }
 ```

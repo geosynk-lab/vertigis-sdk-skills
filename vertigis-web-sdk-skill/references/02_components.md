@@ -54,7 +54,10 @@ export class MyWidgetModel extends ComponentModelBase {
     @importModel("map-extension")
     map: MapModel | undefined;
 
-    // Lifecycle Hook: Initialization
+    // Domain-specific handle collection (NEVER name this `_handles`)
+    private _eventHandles: { remove(): void }[] = [];
+
+    // Lifecycle Hook: Initialization (Base FIRST)
     protected async _onInitialize(): Promise<void> {
         await super._onInitialize();
         console.log("MyWidgetModel initialized with text:", this.greetingText);
@@ -64,8 +67,12 @@ export class MyWidgetModel extends ComponentModelBase {
         this.count++;
     }
 
-    // Lifecycle Hook: Destruction / Cleanup
+    // Lifecycle Hook: Destruction / Cleanup (Child cleanup FIRST, super LAST)
     protected async _onDestroy(): Promise<void> {
+        for (const handle of this._eventHandles) {
+            handle.remove();
+        }
+        this._eventHandles = [];
         await super._onDestroy();
     }
 }
@@ -545,7 +552,7 @@ VertiGIS Studio Web utilizes CSS custom properties (variables) dynamically injec
 
 ---
 
-## 5. Component Lifecycle Hooks
+## 5. Component Lifecycle Hooks & Teardown Architecture
 
 | Hook | Timing | Purpose |
 | :--- | :--- | :--- |
@@ -553,6 +560,134 @@ VertiGIS Studio Web utilizes CSS custom properties (variables) dynamically injec
 | `_load()` | When component becomes active / visible | Lazy loading of heavy resources. |
 | `_unload()` | When component is hidden / deactivated | Releasing temporary listeners or pausing timers. |
 | `_onDestroy()` | When component is permanently removed | Tear down subscriptions, free memory. |
+
+### 5.1 The Symmetric Lifecycle Sequencing Contract
+
+VertiGIS Studio Web components adhere to a strict symmetric lifecycle contract between initialization and teardown:
+
+1. **Initialization (`_onInitialize`) — Base FIRST**:
+   - Always invoke `await super._onInitialize()` **at the very beginning**.
+   - Base services, event buses, message listeners, and ancestor configuration must be ready before the child component establishes its own state, timers, or map subscriptions.
+
+2. **Teardown (`_onDestroy`) — Child Cleanup FIRST, Base LAST**:
+   - Clean up component-specific resources, subscriptions, sketch view models, intervals, and map layers/graphics **before calling the superclass**.
+   - Always invoke `await super._onDestroy()` **as the final line**.
+   - Calling `await super._onDestroy()` *first* prematurely initiates parent teardown while child resources are still active, leaving orphaned listeners or accessing already-disposed base facilities.
+
+---
+
+### 5.2 Critical Pitfall: The `this._handles.destroy is not a function` Deployment Error
+
+#### The Root Cause
+A widespread deployment and publishing crash in VertiGIS Studio Web Designer manifests with:
+```
+TypeError: this._handles.destroy is not a function
+```
+This error occurs because of an interaction between the Web SDK's inheritance hierarchy and modern JavaScript class field semantics:
+
+1. **Inheritance & `HandlesMixin`**:
+   - `InitializableBase` (the foundational base class of `ModelBase` and `ComponentModelBase`) incorporates `HandlesMixin` (`@vertigis/arcgis-extensions/support/HandlesMixin.js`).
+   - `HandlesMixin` defines an internal property `_handles = new Handles;` (an instance of `@arcgis/core/core/Handles`) and calls `this._handles.destroy()` inside its `destroy()` method.
+   - `InitializableBase.prototype.destroy()` invokes `await this._onDestroy()` and then calls `super.destroy()`, executing `this._handles.destroy()`.
+
+2. **ES2022 Class Field Clobbering (`useDefineForClassFields: true`)**:
+   - Modern VertiGIS SDK build pipelines target `es2022`. Under ECMAScript standard class field semantics, instance fields declared in derived classes execute immediately after `super()` completes.
+   - If a custom component model declares:
+     ```typescript
+     // ❌ FATAL ANTI-PATTERN
+     export class CustomModel extends ComponentModelBase {
+         private _handles: any[] = []; // or private _handles: IHandle[] = [];
+     ```
+   - When the component instance is constructed:
+     1. `super()` runs `HandlesMixin`, which instantiates `this._handles = new Handles()`.
+     2. The child class field initializer runs: `this._handles = []`.
+     3. The parent's `Handles` instance is **completely overwritten** with a plain JavaScript `Array`!
+   - When the component is torn down (which VertiGIS Studio Web Designer executes during application publishing and packaging to validate and clean up component models), `model.destroy()` triggers `super.destroy()` -> `this._handles.destroy()`.
+   - Because `Array.prototype.destroy` does not exist, the entire deployment or publishing process crashes with `TypeError: this._handles.destroy is not a function`!
+
+---
+
+### 5.3 Correct Resource Disposal Patterns
+
+#### Option A: Domain-Specific Handle Arrays (Recommended)
+Prefix your handle collections with descriptive, domain-specific names to prevent accidental collision with base class properties:
+
+```typescript
+// src/components/CustomWidget/CustomWidgetModel.ts
+import { ComponentModelBase, serializable } from "@vertigis/web/models";
+
+export interface DisposableHandle {
+    remove(): void;
+}
+
+@serializable
+export class CustomWidgetModel extends ComponentModelBase {
+    // ✅ SAFE: Use domain-prefixed arrays, NEVER `_handles`
+    private _eventHandles: DisposableHandle[] = [];
+    private _sketchHandles: __esri.Handle[] = [];
+
+    protected async _onInitialize(): Promise<void> {
+        // 1. Base initialization FIRST
+        await super._onInitialize();
+
+        // 2. Register event handlers into domain collection
+        const eventHandle = this.messages.events.map.click.subscribe((args) => {
+            this.handleMapClick(args);
+        });
+        this._eventHandles.push(eventHandle);
+    }
+
+    protected async _onDestroy(): Promise<void> {
+        // 1. Clean up child resources FIRST
+        for (const handle of this._eventHandles) {
+            handle.remove();
+        }
+        this._eventHandles = [];
+
+        for (const handle of this._sketchHandles) {
+            handle.remove();
+        }
+        this._sketchHandles = [];
+
+        // 2. Base teardown LAST
+        await super._onDestroy();
+    }
+
+    private handleMapClick(args: any): void {
+        // handle map click
+    }
+}
+```
+
+#### Option B: Utilizing the Inherited Base `this._handles`
+If you wish to use Esri's `Handles` management, do **NOT** re-declare `_handles` in your subclass. Simply use the inherited `this._handles` directly (inherited from `HandlesMixin`):
+
+```typescript
+// src/components/CustomWidget/CustomWidgetModel.ts
+import { ComponentModelBase, serializable } from "@vertigis/web/models";
+
+@serializable
+export class CustomWidgetModel extends ComponentModelBase {
+    // Notice: NO `_handles` property declaration here!
+
+    protected async _onInitialize(): Promise<void> {
+        await super._onInitialize();
+
+        // Utilize base Handles instance (groups support keying)
+        this._handles.add([
+            this.messages.events.map.click.subscribe((args) => this.handleMapClick(args)),
+        ], "map-events");
+    }
+
+    protected async _onDestroy(): Promise<void> {
+        // Optional: remove specific groups early if needed
+        this._handles.remove("map-events");
+
+        // Base class handles will automatically call this._handles.destroy()
+        await super._onDestroy();
+    }
+}
+```
 
 ---
 
