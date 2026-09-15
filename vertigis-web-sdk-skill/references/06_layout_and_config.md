@@ -236,3 +236,175 @@ export function CustomWidget() {
     );
 }
 ```
+
+---
+
+## 7. VertiGIS Studio Web Designer Settings Schema Protocol
+
+When a component is selected in the VertiGIS Studio Web Designer layout tree or map viewport, Designer dynamically renders an inspector settings panel. This panel is powered by the **Designer Settings Schema Protocol** implemented on the component manifest:
+
+```mermaid
+sequenceDiagram
+    participant Designer as VertiGIS Studio Web Designer
+    participant Manifest as Component Manifest Callbacks
+    participant LayoutNode as LayoutNode (layout.xml)
+    participant Model as ComponentModel Instance
+
+    Note over Designer,Manifest: Step 1: Form Generation
+    Designer->>Manifest: getLayoutDesignerSettingsSchema({ node, utils })
+    Manifest-->>Designer: SettingsSchema (controls: text, number, checkbox, select)
+
+    Note over Designer,LayoutNode: Step 2: Form Hydration
+    Designer->>Manifest: getLayoutDesignerSettings({ node, utils })
+    Manifest->>LayoutNode: node.attributes.get("param-name")
+    LayoutNode-->>Manifest: XML attribute values
+    Manifest-->>Designer: Settings Object (initial form state)
+
+    Note over Designer,Model: Step 3: Inspector Edit & Persistence
+    Designer->>Manifest: applyLayoutDesignerSettings({ node, settings, utils })
+    Manifest->>LayoutNode: node.attributes.set("param-name", val)
+    Manifest->>Model: model.updateConfig(settings)
+    Model-->>Model: Re-render / Update observables
+```
+
+### The Three Protocol Methods
+
+#### 1. `getLayoutDesignerSettingsSchema` (Form Schema Declaration)
+Informs the Designer inspector what fields to render, their input controls, labels, and validation rules:
+- Combines or extends the default layout settings schema via `await getLayoutDesignerSettingsSchema(args)` to preserve standard layout controls (`margin`, `padding`, `halign`, `valign`, `slot`, `sizing`).
+- Declares fields using supported types:
+  - `text`: single-line or multi-line text input
+  - `number`: numeric input or range slider (`min`, `max`, `step`)
+  - `checkbox`: boolean toggle
+  - `select`: dropdown picker (`values: SelectValue[]`)
+  - `toggle`: button toggle group
+  - `color`: color picker
+  - `command`: command/workflow action selector
+  - `group`: collapsible grouping of sub-settings
+
+#### 2. `getLayoutDesignerSettings` (Form Hydration from XML)
+Extracts attribute values currently present on the layout element in `layout.xml` via `args.node.attributes.get(...)` and populates the Designer form:
+- XML attribute names conventionally follow kebab-case (e.g. `refresh-interval`, `show-border`, `accent-color`).
+- Returns a typed settings object conforming to the schema.
+
+#### 3. `applyLayoutDesignerSettings` (Persistence to XML & Model)
+Invoked by Designer whenever the user modifies an inspector input field:
+- Writes updated values back into the layout XML node via `args.node.attributes.set(...)`.
+- For immediate live updates in Designer preview without requiring page reloads, propagates changes to the active model instance via `node.model.updateConfig(...)`.
+
+### Implementation Example
+
+```typescript
+import { LibraryRegistry } from "@vertigis/web/config";
+import {
+    applyLayoutDesignerSettings,
+    getLayoutDesignerSettings,
+    getLayoutDesignerSettingsSchema,
+    GetLayoutDesignerSettingsArgs,
+    ApplyLayoutDesignerSettingsArgs,
+    SettingsSchema,
+} from "@vertigis/web/designer";
+import MyWidget, { MyWidgetModel } from "./components/MyWidget";
+
+interface MyWidgetLayoutSettings {
+    title?: string;
+    refreshInterval?: number;
+    showBorder?: boolean;
+    displayMode?: "compact" | "full";
+}
+
+export default function (registry: LibraryRegistry): void {
+    registry.registerComponent({
+        name: "my-widget",
+        namespace: "custom.foo",
+        getComponentType: () => MyWidget,
+        itemType: "my-widget-model",
+        getItemType: () => MyWidgetModel,
+        title: "My Custom Widget",
+
+        getLayoutDesignerSettingsSchema: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<SettingsSchema<MyWidgetLayoutSettings>> => {
+            const baseSchema = await getLayoutDesignerSettingsSchema(args);
+            return {
+                ...baseSchema,
+                settings: [
+                    ...(baseSchema.settings || []),
+                    {
+                        id: "title",
+                        type: "text",
+                        displayName: "Widget Title",
+                        description: "Header title displayed in widget chrome",
+                    },
+                    {
+                        id: "refreshInterval",
+                        type: "number",
+                        displayName: "Refresh Interval (s)",
+                        description: "Background polling frequency",
+                        min: 5,
+                        max: 3600,
+                    },
+                    {
+                        id: "showBorder",
+                        type: "checkbox",
+                        displayName: "Show Border",
+                        description: "Whether to draw an outer border",
+                    },
+                    {
+                        id: "displayMode",
+                        type: "select",
+                        displayName: "Display Mode",
+                        description: "Layout density presentation",
+                        values: [
+                            { displayName: "Compact", value: "compact" },
+                            { displayName: "Full / Expanded", value: "full" },
+                        ],
+                    },
+                ],
+            };
+        },
+
+        getLayoutDesignerSettings: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<MyWidgetLayoutSettings> => {
+            const baseSettings = await getLayoutDesignerSettings(args);
+            return {
+                ...baseSettings,
+                title: (args.node.attributes.get("title") as string) || "Default Title",
+                refreshInterval: Number(args.node.attributes.get("refresh-interval")) || 30,
+                showBorder: args.node.attributes.get("show-border") === "true",
+                displayMode: (args.node.attributes.get("display-mode") as "compact" | "full") || "full",
+            };
+        },
+
+        applyLayoutDesignerSettings: async (
+            args: ApplyLayoutDesignerSettingsArgs<MyWidgetLayoutSettings>
+        ): Promise<void> => {
+            await applyLayoutDesignerSettings(args);
+            const { node, settings } = args;
+
+            if (settings.title !== undefined) {
+                node.attributes.set("title", settings.title);
+            }
+            if (settings.refreshInterval !== undefined) {
+                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+            }
+            if (settings.showBorder !== undefined) {
+                node.attributes.set("show-border", String(settings.showBorder));
+            }
+            if (settings.displayMode !== undefined) {
+                node.attributes.set("display-mode", settings.displayMode);
+            }
+
+            if (node.model && typeof (node.model as any).updateConfig === "function") {
+                (node.model as any).updateConfig({
+                    title: settings.title,
+                    refreshInterval: settings.refreshInterval,
+                    showBorder: settings.showBorder,
+                    displayMode: settings.displayMode,
+                });
+            }
+        },
+    });
+}
+```

@@ -5,7 +5,7 @@
 - [1. Creating the Component Model](#1-creating-the-component-model)
   - [Advanced `@serializable` Options](#advanced-serializable-options)
 - [2. Creating the React View (MUI + LayoutElement Required)](#2-creating-the-react-view-mui--layoutelement-required)
-  - [Exposing Configuration Parameters to VertiGIS Web Designer](#-exposing-configuration-parameters-to-vertigis-web-designer)
+  - [Exposing Configuration Parameters & Web Designer Settings Schema Protocol](#-exposing-configuration-parameters--web-designer-settings-schema-protocol)
 - [3. Creating and Registering Custom SVG Icons](#3-creating-and-registering-custom-svg-icons)
 - [4. Styling and Theming Rules](#4-styling-and-theming-rules)
   - [4.1 Typography System](#41-typography-system)
@@ -98,8 +98,14 @@ Views MUST:
 - Wrap all content inside `<LayoutElement {...props}>` — this is **REQUIRED** by the SDK
 - Wrap the component function with `observer()` from MobX to enable reactive re-rendering when model observables change
 
-### 💡 Exposing Configuration Parameters to VertiGIS Web Designer
-If you want to expose configuration parameters that appear in the **VertiGIS Studio Web Designer**, you MUST extend `LayoutElementProperties<TModel>` in your React component's props interface.
+### 💡 Exposing Configuration Parameters & Web Designer Settings Schema Protocol
+
+Exposing configurable properties to the **VertiGIS Studio Web Designer** involves two complementary layers:
+1. **React Props Interface (`LayoutElementProperties<TModel>`)**: Types the props passed into the React view.
+2. **Designer Settings Schema Protocol (`ComponentManifest`)**: Programmatically declares form controls, extracts attribute values from the layout node, and persists user edits back to the layout node and active model instance.
+
+#### 1. React View & Props Interface
+In the React component, extend `LayoutElementProperties<TModel>` with optional custom properties:
 
 ```tsx
 // src/components/MyWidget/main.tsx
@@ -115,16 +121,18 @@ import { I18nService } from "@vertigis/web/i18n";
 import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { MyWidgetModel } from "./MyWidgetModel";
 
-interface MyWidgetProps extends LayoutElementProperties<MyWidgetModel> {
+export interface MyWidgetProps extends LayoutElementProperties<MyWidgetModel> {
     /**
      * @displayName Custom Config Property
      * @description This property will automatically show up in the Web Designer.
      */
     customConfigParam?: string;
+    refreshInterval?: number;
+    showBorder?: boolean;
 }
 
 const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactElement {
-    const { model, customConfigParam = "Default" } = props;
+    const { model, customConfigParam = "Default", refreshInterval = 30, showBorder = false } = props;
 
     // Direct access to UI Context commands & services in React views
     const { commands } = useUIContext();
@@ -147,7 +155,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                         p: 2,
                         backgroundColor: "var(--primaryBackground, #ffffff)",
                         borderRadius: "var(--borderRadius, 4px)",
-                        border: "1px solid var(--primaryBorder, #e0e0e0)",
+                        border: showBorder ? "1px solid var(--primaryBorder, #e0e0e0)" : "none",
                     }}
                 >
                     {/* Widget Title with MUI Typography */}
@@ -182,7 +190,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                     >
                         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
                             <Typography variant="body1" sx={{ color: "var(--primaryForeground, #212121)" }}>
-                                Current Count: <strong>{model.count}</strong>
+                                Current Count: <Box component="span" sx={{ fontWeight: "bold" }}>{model.count}</Box>
                             </Typography>
                             <Typography
                                 variant="overline"
@@ -200,7 +208,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                         </Stack>
 
                         <Typography variant="body2" sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}>
-                            Configuration parameter: {customConfigParam}
+                            Configuration parameter: {customConfigParam} (Interval: {refreshInterval}s)
                         </Typography>
 
                         <Button
@@ -232,6 +240,191 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 
 export default MyWidget;
 ```
+
+#### 2. Component Model Dynamic Configuration
+The model class should expose an `updateConfig(...)` method so settings changes in the Designer inspector take effect immediately without requiring a full page reload:
+
+```typescript
+// src/components/MyWidget/MyWidgetModel.ts
+import { ComponentModelBase, serializable } from "@vertigis/web/models";
+
+export interface MyWidgetConfig {
+    customConfigParam?: string;
+    refreshInterval?: number;
+    showBorder?: boolean;
+}
+
+@serializable
+export class MyWidgetModel extends ComponentModelBase {
+    @serializable
+    customConfigParam: string = "Default";
+
+    @serializable
+    refreshInterval: number = 30;
+
+    @serializable
+    showBorder: boolean = false;
+
+    @serializable
+    count: number = 0;
+
+    greetingText: string = "Hello VertiGIS Studio Web";
+
+    increment(): void {
+        this.count += 1;
+    }
+
+    /**
+     * Called by applyLayoutDesignerSettings when settings are modified in Designer.
+     */
+    updateConfig(config: Partial<MyWidgetConfig>): void {
+        if (config.customConfigParam !== undefined) {
+            this.customConfigParam = config.customConfigParam;
+        }
+        if (config.refreshInterval !== undefined) {
+            this.refreshInterval = config.refreshInterval;
+        }
+        if (config.showBorder !== undefined) {
+            this.showBorder = config.showBorder;
+        }
+    }
+}
+```
+
+#### 3. VertiGIS Studio Web Designer Settings Schema Protocol
+VertiGIS Studio Web Designer renders its component settings panel dynamically based on the callbacks registered on the `ComponentManifest` in `src/index.ts`:
+
+- **Schema Declaration (`getLayoutDesignerSettingsSchema`)**: Informs Designer of the field `id`, `type` (`text`, `number`, `checkbox`, `select`, `color`, `command`), `displayName`, and tooltip `description`.
+- **Current Value Extraction (`getLayoutDesignerSettings`)**: Reads the XML attributes present on the layout element node (`args.node.attributes.get(...)`) and binds them into the Designer UI form state.
+- **Persisting Designer Changes (`applyLayoutDesignerSettings`)**: When the user edits a value in the Designer inspector, Designer invokes this callback, writing updated attributes back to `args.node.attributes.set(...)` and passing updated configuration into the live model instance via `model.updateConfig(...)`.
+
+```typescript
+// src/index.ts
+import { LibraryRegistry } from "@vertigis/web/config";
+import {
+    applyLayoutDesignerSettings,
+    getLayoutDesignerSettings,
+    getLayoutDesignerSettingsSchema,
+    GetLayoutDesignerSettingsArgs,
+    ApplyLayoutDesignerSettingsArgs,
+    SettingsSchema,
+} from "@vertigis/web/designer";
+import MyWidget, { MyWidgetProps } from "./components/MyWidget/main";
+import { MyWidgetModel, MyWidgetConfig } from "./components/MyWidget/MyWidgetModel";
+
+const LAYOUT_NAMESPACE = "custom.widgets";
+
+export default function (registry: LibraryRegistry): void {
+    registry.registerComponent({
+        name: "my-widget",
+        namespace: LAYOUT_NAMESPACE,
+        getComponentType: () => MyWidget,
+        itemType: "my-widget-model",
+        getItemType: () => MyWidgetModel,
+        title: "My Custom Widget",
+        category: "default",
+
+        // 1. Schema Declaration
+        getLayoutDesignerSettingsSchema: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<SettingsSchema<MyWidgetConfig>> => {
+            const baseSchema = await getLayoutDesignerSettingsSchema(args);
+            return {
+                ...baseSchema,
+                settings: [
+                    ...(baseSchema.settings || []),
+                    {
+                        id: "customConfigParam",
+                        type: "text",
+                        displayName: "Config Parameter",
+                        description: "Custom configuration text passed to widget",
+                    },
+                    {
+                        id: "refreshInterval",
+                        type: "number",
+                        displayName: "Refresh Interval (seconds)",
+                        description: "Frequency of background polling in seconds",
+                        min: 5,
+                        max: 3600,
+                    },
+                    {
+                        id: "showBorder",
+                        type: "checkbox",
+                        displayName: "Show Card Border",
+                        description: "Toggles outer card border display",
+                    },
+                ],
+            };
+        },
+
+        // 2. Current Value Extraction
+        getLayoutDesignerSettings: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<MyWidgetConfig> => {
+            const baseSettings = await getLayoutDesignerSettings(args);
+            return {
+                ...baseSettings,
+                customConfigParam:
+                    (args.node.attributes.get("custom-config-param") as string) || "Default",
+                refreshInterval:
+                    Number(args.node.attributes.get("refresh-interval")) || 30,
+                showBorder:
+                    args.node.attributes.get("show-border") === "true",
+            };
+        },
+
+        // 3. Persisting Designer Changes
+        applyLayoutDesignerSettings: async (
+            args: ApplyLayoutDesignerSettingsArgs<MyWidgetConfig>
+        ): Promise<void> => {
+            // Apply base layout settings (margin, padding, halign, valign)
+            await applyLayoutDesignerSettings(args);
+            const { node, settings } = args;
+
+            // Write back updated attributes to the layout XML node
+            if (settings.customConfigParam !== undefined) {
+                node.attributes.set("custom-config-param", settings.customConfigParam);
+            }
+            if (settings.refreshInterval !== undefined) {
+                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+            }
+            if (settings.showBorder !== undefined) {
+                node.attributes.set("show-border", String(settings.showBorder));
+            }
+
+            // Propagate updated configuration into the active model instance
+            const model = node.model as MyWidgetModel | undefined;
+            if (model && typeof model.updateConfig === "function") {
+                model.updateConfig({
+                    customConfigParam: settings.customConfigParam,
+                    refreshInterval: settings.refreshInterval,
+                    showBorder: settings.showBorder,
+                });
+            }
+        },
+    });
+
+    registry.registerModel({
+        getModel: (config) => new MyWidgetModel(config),
+        itemType: "my-widget-model",
+    });
+}
+```
+
+#### Supported Designer Setting Types
+
+| Setting `type` | Control Rendered | Key Properties |
+| :--- | :--- | :--- |
+| `"text"` | Single-line or multi-line text input | `multiline?: boolean`, `isRequired?: boolean` |
+| `"number"` | Numeric input / range slider | `min?: number`, `max?: number`, `step?: number` |
+| `"checkbox"` | Boolean toggle checkbox | (standard `SettingBase`) |
+| `"toggle"` | Multi-button toggle bar | `values: ToggleValue[]` |
+| `"select"` | Dropdown menu picker | `values: SelectValue[]`, `allowMultiple?: boolean` |
+| `"color"` | Hex/RGB color picker | (standard `SettingBase`) |
+| `"command"` | Command / workflow action picker | `contextType`, `mode?: "all" \| "workflow"` |
+| `"operation"` | Operation picker with return value | `contextType`, `outputType` |
+| `"group"` | Collapsible grouping section | `displayName: string`, `settings: Setting<T>[]` |
+| `"sizing"` | Standard component sizing controls | (standard `SettingBase`) |
 
 ---
 

@@ -34,6 +34,19 @@
         "Uses scripts/initiate_agents_md.py helper script",
         "Directives are bounded by <!-- vertigis-web-sdk:start --> and <!-- vertigis-web-sdk:end -->"
       ]
+    },
+    {
+      "id": 4,
+      "prompt": "Create a configurable alert banner widget in VertiGIS Web SDK that exposes title, auto-dismiss seconds, and alert severity (info, warning, error) as configurable properties in VertiGIS Studio Web Designer.",
+      "expected_output": "A complete VertiGIS Web component package implementing the Designer Settings Schema Protocol via getLayoutDesignerSettingsSchema, getLayoutDesignerSettings, and applyLayoutDesignerSettings on the component manifest, with LayoutElementProperties extending React props and live updateConfig() on the model.",
+      "files": [],
+      "expectations": [
+        "React component props interface extends LayoutElementProperties<TModel>",
+        "Component manifest implements getLayoutDesignerSettingsSchema declaring field IDs, types (text, number, select), display names, and descriptions",
+        "Component manifest implements getLayoutDesignerSettings extracting XML attributes via args.node.attributes.get()",
+        "Component manifest implements applyLayoutDesignerSettings writing attributes back via args.node.attributes.set() and calling model.updateConfig()",
+        "Component model includes an updateConfig() method to update observable properties dynamically"
+      ]
     }
   ]
 }

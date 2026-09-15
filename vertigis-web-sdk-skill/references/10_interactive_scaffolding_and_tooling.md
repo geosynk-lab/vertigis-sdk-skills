@@ -43,7 +43,7 @@ When performing a code review or when asked to **"Review my code"**, audit the c
 - **Monolithic God-Component Violation (> 250 Lines)**: Any component file (`*.tsx`, `*Model.ts`, etc.) exceeding 250 lines violates enterprise modularity standards. Monolithic files break reactivity boundaries, hinder testing, and create unmaintainable code. Decompose the file immediately into `components/`, `hooks/`, and `utils/`.
 - **`<LayoutElement>` Wrapper**: React view MUST wrap all JSX inside `<LayoutElement {...props}>`. Omitting this breaks SDK layout slotting, sizing, and Designer drag-and-drop.
 - **MobX `observer()`**: React view MUST be wrapped with `observer()` from `mobx-react-lite` if reading model properties. Without it, model observable changes will not trigger re-renders.
-- **Designer Integration**: Props interface MUST extend `LayoutElementProperties<TModel>` so parameters are exposed to Web Designer.
+- **Designer Integration & Settings Schema Protocol**: Props interface MUST extend `LayoutElementProperties<TModel>`, AND when configurable properties are exposed in Designer, the component manifest MUST implement the Designer Settings Schema Protocol (`getLayoutDesignerSettingsSchema`, `getLayoutDesignerSettings`, and `applyLayoutDesignerSettings`) with live `model.updateConfig(...)` synchronization.
 - **Typography System Violations (Ban on Raw HTML Text)**: NEVER use raw HTML text tags (`<span>`, `<p>`, `<h1>`-`<h6>`, `<strong>`, `<em>`). All text MUST use `@mui/material` `<Typography variant="...">` paired with semantic foreground tokens (`var(--primaryForeground, #1e1e1e)`, `var(--secondaryForeground, #666666)`). Raw text tags fail theme adaptation and break typography consistency.
 - **Color Token Violations (Ban on Hardcoded Colors)**: NEVER use hardcoded hex (`#ffffff`, `#hex`), RGB (`rgb(...)`), or HSL (`hsl(...)`) colors for UI chrome, backgrounds, text, and borders in JSX, inline styles, or MUI `sx` props. All styling must map to VertiGIS CSS variable tokens with safe fallbacks (`var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`, `var(--primaryAccent, #007ac2)`). Hardcoded colors break in dark mode, fail WCAG contrast requirements, and cause theme crashes.
 - **ArcGIS AMD Star Imports**: Utility/function modules (`projection`, `geometryEngine`) must use star imports (`import * as projection from "@arcgis/core/geometry/projection"`). Default imports cause `Unsupported AMD module` errors.
@@ -234,5 +234,11 @@ python3 vertigis-web-sdk-skill/scripts/initiate_agents_md.py --target-dir /path/
 - **MobX `observer()`**: Wrap all React views that read model observables with `observer()` from `mobx-react-lite`.
 - **`<ErrorBoundary>` Wrapping**: Wrap custom widget contents in an `<ErrorBoundary>` component to isolate runtime faults and protect host application stability.
 - **Lifecycle Cleanup**: All subscriptions, intervals, and MobX reactions initialized in `_onInitialize()` MUST be cleanly disposed in `_onDestroy()`.
+
+## 5. Web Designer Settings Schema Protocol
+When exposing customizable component properties to the VertiGIS Studio Web Designer inspector panel:
+- **Schema Declaration (`getLayoutDesignerSettingsSchema`)**: Return a `SettingsSchema` declaring setting fields (`id`, `type` such as `text`, `number`, `checkbox`, `select`, `displayName`, `description`).
+- **Current Value Extraction (`getLayoutDesignerSettings`)**: Read XML attributes from layout node (`args.node.attributes.get(...)`) and map them to the Designer settings form state.
+- **Persisting Changes (`applyLayoutDesignerSettings`)**: Write updated attributes back to `args.node.attributes.set(...)` and propagate configuration changes to the live model via `model.updateConfig(...)`.
 <!-- vertigis-web-sdk:end -->
 ```

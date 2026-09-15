@@ -24,7 +24,7 @@ You MUST adhere to the following rules without exception:
 2. **Color & Design Tokens Subsystem**: Strict ban on hardcoded hex (`#ffffff`, `#1976d2`), RGB (`rgb(...)`), or HSL colors for UI chrome, backgrounds, text, and borders. ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`) to ensure resilient rendering in headless, disconnected, or preview environments. Structure component styling around a standardized `tokens/` directory (`ui.ts`, `typography.ts`, `index.ts`). Use `color-mix(in srgb, ...)` for derived tints, hover states, muted borders, and transparent overlays to adapt automatically to light and dark themes without manual CSS overrides. For non-CSS contexts (Plotly, canvas renderers, third-party iframe bridges, PDF exports), use the standalone `isDarkTheme()` utility. In React contexts, use the reactive `useIsDarkTheme()` hook and apply MUI `createTheme` overrides with `ThemeProvider` for composite controls. Keep UI chrome neutral so the GIS map remains the primary focus. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text) across both themes.
 3. **No Custom CSS / CSS Modules**: NEVER generate `*.css` or `*.module.css` files. Minimize injected CSS. Inherit from parent styles natively via tokens and MUI `sx`.
 4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
-5. **Exposing Properties to Designer**: To expose configuration parameters to the VertiGIS Web Designer, the React component's props interface MUST extend `LayoutElementProperties<TModel>`.
+5. **Exposing Properties to Designer (Settings Schema Protocol)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**: (1) `getLayoutDesignerSettingsSchema` declaring field IDs, types (`text`, `number`, `checkbox`, `select`), display names, and tooltips, (2) `getLayoutDesignerSettings` reading XML attributes via `args.node.attributes.get(...)`, and (3) `applyLayoutDesignerSettings` persisting values back via `args.node.attributes.set(...)` and synchronizing the live model via `model.updateConfig(...)`.
 6. **LayoutElement Wrapper**: Every component view MUST wrap its content inside `<LayoutElement {...props}>` (imported from `@vertigis/web/components`) for layout slotting and Designer support.
 7. **MobX Observer**: Every React component that reads model properties MUST be wrapped with `observer()` from `mobx-react-lite`.
 8. **ArcGIS Import Rules**: Use default imports for class modules (`import Graphic from "@arcgis/core/Graphic"`). Use star imports for utility/function modules to avoid AMD errors (`import * as projection from "@arcgis/core/geometry/projection"`).
@@ -207,6 +207,114 @@ const CustomWidget = observer(function CustomWidget(props: CustomWidgetProps) {
 });
 
 export default CustomWidget;
+```
+
+### C. Exposing Properties to Designer (Settings Schema Protocol)
+VertiGIS Studio Web Designer renders its component settings panel dynamically based on the schema returned by `getLayoutDesignerSettingsSchema`. When exposing customizable component properties to the Designer inspector:
+
+```typescript
+// src/index.ts
+import { LibraryRegistry } from "@vertigis/web/config";
+import {
+    applyLayoutDesignerSettings,
+    getLayoutDesignerSettings,
+    getLayoutDesignerSettingsSchema,
+    GetLayoutDesignerSettingsArgs,
+    ApplyLayoutDesignerSettingsArgs,
+    SettingsSchema,
+} from "@vertigis/web/designer";
+import CustomWidget, { CustomWidgetModel } from "./components/CustomWidget/main";
+
+interface CustomWidgetLayoutSettings {
+    title?: string;
+    refreshInterval?: number;
+    showBorder?: boolean;
+}
+
+export default function (registry: LibraryRegistry): void {
+    registry.registerComponent({
+        name: "custom-widget",
+        namespace: "your.custom.namespace",
+        getComponentType: () => CustomWidget,
+        itemType: "custom-widget-model",
+        getItemType: () => CustomWidgetModel,
+        title: "Custom Widget",
+
+        // 1. Schema Declaration: Informs Designer of field IDs, types, and tooltips
+        getLayoutDesignerSettingsSchema: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<SettingsSchema<CustomWidgetLayoutSettings>> => {
+            const baseSchema = await getLayoutDesignerSettingsSchema(args);
+            return {
+                ...baseSchema,
+                settings: [
+                    ...(baseSchema.settings || []),
+                    {
+                        id: "title",
+                        type: "text",
+                        displayName: "Widget Title",
+                        description: "Header title displayed on the widget card",
+                    },
+                    {
+                        id: "refreshInterval",
+                        type: "number",
+                        displayName: "Refresh Interval (s)",
+                        description: "Data polling interval in seconds",
+                        min: 5,
+                        max: 3600,
+                    },
+                    {
+                        id: "showBorder",
+                        type: "checkbox",
+                        displayName: "Show Card Border",
+                        description: "Render decorative card border",
+                    },
+                ],
+            };
+        },
+
+        // 2. Current Value Extraction: Reads XML attributes into Designer form state
+        getLayoutDesignerSettings: async (
+            args: GetLayoutDesignerSettingsArgs
+        ): Promise<CustomWidgetLayoutSettings> => {
+            const baseSettings = await getLayoutDesignerSettings(args);
+            return {
+                ...baseSettings,
+                title: (args.node.attributes.get("title") as string) || "Default Title",
+                refreshInterval: Number(args.node.attributes.get("refresh-interval")) || 30,
+                showBorder: args.node.attributes.get("show-border") === "true",
+            };
+        },
+
+        // 3. Persisting Changes: Writes back attributes and updates live model instance
+        applyLayoutDesignerSettings: async (
+            args: ApplyLayoutDesignerSettingsArgs<CustomWidgetLayoutSettings>
+        ): Promise<void> => {
+            await applyLayoutDesignerSettings(args);
+            const { node, settings } = args;
+
+            if (settings.title !== undefined) {
+                node.attributes.set("title", settings.title);
+            }
+            if (settings.refreshInterval !== undefined) {
+                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+            }
+            if (settings.showBorder !== undefined) {
+                node.attributes.set("show-border", String(settings.showBorder));
+            }
+
+            // Propagate updated configuration into the live model instance
+            const model = node.model as CustomWidgetModel | undefined;
+            if (model && typeof model.updateConfig === "function") {
+                model.updateConfig({
+                    title: settings.title,
+                    refreshInterval: settings.refreshInterval,
+                    showBorder: settings.showBorder,
+                });
+            }
+        },
+    });
+}
 ```
 
 ---
