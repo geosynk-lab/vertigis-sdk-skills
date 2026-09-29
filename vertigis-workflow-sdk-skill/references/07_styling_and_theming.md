@@ -112,89 +112,214 @@ export const UI_TOKENS = {
     surface: {
         /** Main form canvas, panel, dialog, and container background */
         primary: "var(--primaryBackground, #ffffff)",
+        /** Disabled container / control background */
+        primaryDisabled: "var(--primaryBackgroundDisabled, #ebebeb)",
         /** Nested cards, input fieldsets, zebra-striping, and inset panels */
-        secondary: "var(--secondaryBackground, #f5f5f5)",
+        secondary: "var(--secondaryBackground, #ebebeb)",
         /** Semi-transparent modal backdrop overlay */
         overlay: "var(--overlayBackground, rgba(0, 0, 0, 0.5))",
         /** Inverted high-contrast surface for tooltips and snackbars */
-        inverse: "var(--primaryForeground, #212121)",
+        inverse: "var(--primaryForeground, #323232)",
+        /** Default map background behind tile layers */
+        mapBackground: "var(--defaultMapBackground, #ebebeb)",
+        /** Transparent / None placeholder */
+        none: "var(--none, rgba(0, 0, 0, 0.00))",
     },
 
     // Foreground & Typography Colors
     text: {
         /** Primary body copy, headers, and high-contrast labels */
-        primary: "var(--primaryForeground, #212121)",
+        primary: "var(--primaryForeground, #323232)",
         /** Secondary captions, subtitles, helper text, and muted labels */
-        secondary: "var(--secondaryForeground, #666666)",
+        secondary: "var(--secondaryForeground, #575757)",
         /** Inactive controls, placeholder copy, and disabled text */
-        disabled: "var(--disabledForeground, #9e9e9e)",
+        disabled: "var(--primaryForegroundDisabled, #a1a1a1)",
         /** Inverted high-contrast text on accent or dark backgrounds */
         inverse: "var(--primaryBackground, #ffffff)",
+        /** Splash screen foreground text */
+        splashScreen: "var(--splashScreenForeground, #ffffff)",
     },
 
     // Borders & Structural Dividers
     border: {
         /** Outer panel borders, card outlines, and standard dividers */
-        primary: "var(--primaryBorder, #e0e0e0)",
+        primary: "var(--primaryBorder, #c6c6c6)",
         /** Subtle inner dividers, grid lines, and nested borders */
-        secondary: "var(--secondaryBorder, #eeeeee)",
+        secondary: "var(--secondaryBorder, #a1a1a1)",
+        /** Main application shell panel border */
+        panel: "var(--panelBorder, #a1a1a1)",
         /** High-visibility border for keyboard focus rings and active selections */
-        focus: "var(--focusBorder, #007ac2)",
+        focus: "var(--focusBorder, #1a72c4)",
     },
 
     // Brand Accents & Interactive Highlights
     accent: {
         /** Primary enterprise brand color, active tabs, and primary buttons */
-        primary: "var(--primaryAccent, #007ac2)",
+        primary: "var(--primaryAccent, #1a72c4)",
         /** Hover state for brand buttons, active links, and selection rings */
-        hover: "var(--primaryAccentHover, #005a91)",
+        hover: "var(--primaryAccentHover, #2c2c2c)",
+        /** Disabled state for primary brand accent */
+        disabled: "var(--primaryAccentDisabled, #7c7c7c)",
+        /** Large brand accent elements */
+        large: "var(--primaryAccentLarge, #1a72c4)",
         /** Subtle background tint for selected rows or badge highlights */
-        light: "var(--primaryAccentLight, #e1f5fe)",
+        light: "var(--primaryAccentLight, #e3eff9)",
         /** Contrasting text color rendered on top of accent fills */
-        contrastText: "var(--buttonForeground, #ffffff)",
+        contrastText: "var(--emphasizedButtonForeground, #ffffff)",
     },
 
     // Interactive Controls & Form Elements
     control: {
+        /** Form input border (MuiOutlinedInput notchedOutline) */
+        inputBorder: "var(--inputBorder, #575757)",
+        /** Disabled form input border */
+        inputBorderDisabled: "var(--inputBorderDisabled, #a1a1a1)",
+
+        /** Standard button background */
+        buttonBackground: "var(--buttonBackground, #ffffff)",
+        /** Standard button background on hover */
+        buttonBackgroundHover: "var(--buttonBackgroundHover, #1a72c4)",
+        /** Standard button background when disabled */
+        buttonBackgroundDisabled: "var(--buttonBackgroundDisabled, #c6c6c6)",
+
+        /** Standard button border */
+        buttonBorder: "var(--buttonBorder, #2c2c2c)",
+        /** Standard button border on hover */
+        buttonBorderHover: "var(--buttonBorderHover, #ffffff)",
+        /** Standard button border when disabled */
+        buttonBorderDisabled: "var(--buttonBorderDisabled, #7c7c7c)",
+
+        /** Standard button foreground text */
+        buttonForeground: "var(--buttonForeground, #1a72c4)",
+        /** Standard button foreground text on hover */
+        buttonForegroundHover: "var(--buttonForegroundHover, #ffffff)",
+        /** Standard button foreground text when disabled */
+        buttonForegroundDisabled: "var(--buttonForegroundDisabled, #575757)",
+
+        /** Standard button icon */
+        buttonIcon: "var(--buttonIcon, #1a72c4)",
+        /** Standard button icon on hover */
+        buttonIconHover: "var(--buttonIconHover, #ffffff)",
+        /** Standard button icon when disabled */
+        buttonIconDisabled: "var(--buttonIconDisabled, #575757)",
+
         /** Background fill for emphasized call-to-action buttons */
-        buttonBackground: "var(--emphasizedButtonBackground, var(--primaryAccent, #007ac2))",
-        /** Foreground text and icon color within emphasized buttons */
-        buttonForeground: "var(--buttonForeground, #ffffff)",
+        emphasizedButtonBackground: "var(--emphasizedButtonBackground, #1a72c4)",
+        /** Emphasized button background on hover */
+        emphasizedButtonBackgroundHover: "var(--emphasizedButtonBackgroundHover, #e3eff9)",
+        /** Emphasized button background when disabled */
+        emphasizedButtonBackgroundDisabled: "var(--emphasizedButtonBackgroundDisabled, #b5d3ee)",
+
+        /** Emphasized button border */
+        emphasizedButtonBorder: "var(--emphasizedButtonBorder, #1a72c4)",
+        /** Emphasized button border on hover */
+        emphasizedButtonBorderHover: "var(--emphasizedButtonBorderHover, #1a72c4)",
+        /** Emphasized button border when disabled */
+        emphasizedButtonBorderDisabled: "var(--emphasizedButtonBorderDisabled, #b5d3ee)",
+
+        /** Foreground text within emphasized buttons */
+        emphasizedButtonForeground: "var(--emphasizedButtonForeground, #ffffff)",
+        /** Emphasized button foreground on hover */
+        emphasizedButtonForegroundHover: "var(--emphasizedButtonForegroundHover, #135593)",
+        /** Emphasized button foreground when disabled */
+        emphasizedButtonForegroundDisabled: "var(--emphasizedButtonForegroundDisabled, #135593)",
+
+        /** Emphasized button icon */
+        emphasizedButtonIcon: "var(--emphasizedButtonIcon, #ffffff)",
+        /** Emphasized button icon on hover */
+        emphasizedButtonIconHover: "var(--emphasizedButtonIconHover, #1a72c4)",
+        /** Emphasized button icon when disabled */
+        emphasizedButtonIconDisabled: "var(--emphasizedButtonIconDisabled, #135593)",
+
         /** Hover background for list items, menu rows, and clickable cells */
-        itemHover: "var(--itemHoverBackground, rgba(0, 0, 0, 0.04))",
+        itemHover: "var(--itemHoverBackground, #89b8e4)",
         /** Selected background for active list rows, navigation items, and tree nodes */
-        itemSelected: "var(--itemSelectedBackground, rgba(0, 122, 194, 0.12))",
+        itemSelected: "var(--itemSelectedBackground, #e3eff9)",
+
+        /** Loading bar track fill */
+        loadingBarBackground: "var(--loadingBarBackground, #b5d3ee)",
+    },
+
+    // Icons
+    icon: {
+        accentBackground: "var(--accentIconBackground, #ffffff)",
+        accentBackgroundHover: "var(--accentIconBackgroundHover, #ffffff)",
+        accentBorder: "var(--accentIconBorder, #2c2c2c)",
+        accentBorderHover: "var(--accentIconBorderHover, #2c2c2c)",
+        accentForeground: "var(--accentIconForeground, #1a72c4)",
+        accentForegroundHover: "var(--accentIconForegroundHover, #1a72c4)",
+        disabledFill: "var(--disabledIconFill, #323232)",
+    },
+
+    // Tabs
+    tabs: {
+        primaryForeground: "var(--tabPrimaryForeground, #191919)",
+        secondaryForeground: "var(--tabSecondaryForeground, #1a72c4)",
+    },
+
+    // Inline Table / Grid
+    table: {
+        headerBackground: "var(--inlineTableHeaderBackground, #c6c6c6)",
+        rowBackground: "var(--inlineTableRowBackground, #ebebeb)",
+        border: "var(--inlineTableBorder, #a1a1a1)",
+        rowSelectedBackground: "var(--attributeTableRowSelectedBackground, #1a72c4)",
+        rowSelectedHoverBackground: "var(--attributeTableRowSelectedHoverBackground, #3c88cf)",
+        rowSelectedHoverForeground: "var(--attributeTableRowSelectedHoverForeground, #ffffff)",
     },
 
     // Status Feedback & Validation Alerts
     status: {
-        /** Error alert surface */
-        errorBg: "var(--alertRedBackground, #fdecea)",
-        /** Error alert text and icons */
-        errorFg: "var(--alertRedForeground, #d32f2f)",
-        /** Error alert border outline */
-        errorBorder: "var(--alertRedBorder, #f5c2c7)",
+        // Red / Error
+        errorBg: "var(--alertRedBackground, #b22222)",
+        errorBgHover: "var(--alertRedBackgroundHover, #ffffff)",
+        errorBorder: "var(--alertRedBorder, #b22222)",
+        errorBorderHover: "var(--alertRedBorderHover, #b22222)",
+        errorFg: "var(--alertRedForeground, #ffffff)",
+        errorFgHover: "var(--alertRedForegroundHover, #b22222)",
+        errorIcon: "var(--alertRedIcon, #ffffff)",
+        errorIconHover: "var(--alertRedIconHover, #b22222)",
 
-        /** Success alert surface */
-        successBg: "var(--alertGreenBackground, #edf7ed)",
-        /** Success alert text and icons */
-        successFg: "var(--alertGreenForeground, #2e7d32)",
-        /** Success alert border outline */
-        successBorder: "var(--alertGreenBorder, #c3e6cb)",
+        // Amber / Warning
+        warningBg: "var(--alertAmberBackground, #bf5300)",
+        warningBgHover: "var(--alertAmberBackgroundHover, #ffffff)",
+        warningBorder: "var(--alertAmberBorder, #bf5300)",
+        warningBorderHover: "var(--alertAmberBorderHover, #bf5300)",
+        warningFg: "var(--alertAmberForeground, #ffffff)",
+        warningFgHover: "var(--alertAmberForegroundHover, #bf5300)",
+        warningIcon: "var(--alertAmberIcon, #ffffff)",
+        warningIconHover: "var(--alertAmberIconHover, #bf5300)",
 
-        /** Warning / Caution alert surface */
-        warningBg: "var(--alertAmberBackground, #fff4e5)",
-        /** Warning / Caution alert text and icons */
-        warningFg: "var(--alertAmberForeground, #ed6c02)",
-        /** Warning / Caution alert border outline */
-        warningBorder: "var(--alertAmberBorder, #ffeeba)",
+        // Green / Success
+        successBg: "var(--alertGreenBackground, #008040)",
+        successBgHover: "var(--alertGreenBackgroundHover, #ffffff)",
+        successBorder: "var(--alertGreenBorder, #008040)",
+        successBorderHover: "var(--alertGreenBorderHover, #008040)",
+        successFg: "var(--alertGreenForeground, #ffffff)",
+        successFgHover: "var(--alertGreenForegroundHover, #008040)",
+        successIcon: "var(--alertGreenIcon, #ffffff)",
+        successIconHover: "var(--alertGreenIconHover, #008040)",
 
-        /** Informational / Neutral alert surface */
-        infoBg: "var(--alertGrayBackground, #e8f4fd)",
-        /** Informational / Neutral alert text and icons */
-        infoFg: "var(--alertGrayForeground, #0288d1)",
-        /** Informational / Neutral alert border outline */
-        infoBorder: "var(--alertGrayBorder, #bee5eb)",
+        // Gray / Info
+        infoBg: "var(--alertGrayBackground, #2c2c2c)",
+        infoBgHover: "var(--alertGrayBackgroundHover, #ffffff)",
+        infoBorder: "var(--alertGrayBorder, #2c2c2c)",
+        infoBorderHover: "var(--alertGrayBorderHover, #2c2c2c)",
+        infoFg: "var(--alertGrayForeground, #ffffff)",
+        infoFgHover: "var(--alertGrayForegroundHover, #2c2c2c)",
+        infoIcon: "var(--alertGrayIcon, #ffffff)",
+        infoIconHover: "var(--alertGrayIconHover, #2c2c2c)",
+
+        // Alert Disabled State
+        disabledBg: "var(--alertBackgroundDisabled, #2c2c2c)",
+        disabledBorder: "var(--alertBorderDisabled, #2c2c2c)",
+        disabledFg: "var(--alertForegroundDisabled, #a1a1a1)",
+        disabledIcon: "var(--alertIconDisabled, #a1a1a1)",
+
+        // Error Helper Text & Icon
+        errorHelperTextBg: "var(--errorHelperTextBackground, #ffffff)",
+        errorHelperTextFg: "var(--errorHelperTextForeground, #b22222)",
+        errorIconBg: "var(--errorIconBackground, #b22222)",
+        errorIconFg: "var(--errorIconForeground, #ffffff)",
     },
 
     // Geometry & Layout Spacing
@@ -537,7 +662,7 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
         palette: {
             mode: isDark ? "dark" : "light",
             primary: {
-                main: isDark ? "#4dabf5" : "#007ac2",
+                main: UI_TOKENS.accent.primary,
                 contrastText: UI_TOKENS.accent.contrastText,
             },
             background: {
@@ -562,6 +687,12 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
             info: {
                 main: UI_TOKENS.status.infoFg,
             },
+            action: {
+                hover: UI_TOKENS.control.itemHover,
+                selected: UI_TOKENS.control.itemSelected,
+                disabledBackground: UI_TOKENS.control.buttonBackgroundDisabled,
+                disabled: UI_TOKENS.text.disabled,
+            },
         },
         typography: {
             fontFamily: TYPOGRAPHY_TOKENS.fontFamily.primary,
@@ -571,6 +702,14 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
             borderRadius: 4,
         },
         components: {
+            MuiPaper: {
+                styleOverrides: {
+                    root: {
+                        // CRITICAL: Disable MUI default dark elevation overlay tint
+                        backgroundImage: "none",
+                    },
+                },
+            },
             MuiButton: {
                 styleOverrides: {
                     root: {
@@ -585,10 +724,26 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                     root: {
                         minHeight: UI_TOKENS.touch.minHeight,
                         "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: UI_TOKENS.border.primary,
+                            borderColor: UI_TOKENS.control.inputBorder,
                         },
                         "&:hover .MuiOutlinedInput-notchedOutline": {
                             borderColor: UI_TOKENS.accent.primary,
+                        },
+                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: UI_TOKENS.accent.primary,
+                        },
+                        "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
+                            borderColor: UI_TOKENS.control.inputBorderDisabled,
+                        },
+                    },
+                },
+            },
+            MuiInputLabel: {
+                styleOverrides: {
+                    root: {
+                        color: UI_TOKENS.text.secondary,
+                        "&.Mui-focused": {
+                            color: UI_TOKENS.accent.primary,
                         },
                     },
                 },
@@ -610,6 +765,79 @@ export function VertiGisThemeProvider({ children, isDark = false }: VertiGisThem
     return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
 }
 ```
+
+---
+
+### Pure Theme Inheritance & Zero Color Injection Rule (Form Elements)
+
+#### The Rule: Never Inject Colors into Standard MUI Form Elements
+When developing custom workflow form elements with MUI (`DatePicker`, `TimePicker`, `DateTimePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Slider`, `RadioGroup`), **never inject inline color styles** via `sx={{ color, backgroundColor, borderColor }}` or CSS classes.
+
+#### Why Micro-Injecting Colors Hurts Form Elements
+1. **Destroys Dynamic Pseudo-States**: Manual `sx` overrides clobber native `:hover`, `:focus-visible`, `:disabled`, `:selected`, and touch feedback states.
+2. **Breaks Theme Synchronization**: When mobile or desktop users switch between light and dark themes, hardcoded styles cause severe readability and contrast bugs in outdoor field conditions.
+3. **Bloats Code with Brittle Selectors**: Composite controls like `<DatePicker>` comprise calendar modals, header arrows, year grids, and day buttons. Micro-styling them via CSS selectors creates brittle boilerplate that breaks across MUI releases.
+
+#### What NOT to Do (Anti-Pattern)
+```tsx
+// ❌ WRONG: Micro-injecting tokens into internal MUI subcomponents
+<DatePicker
+    value={value}
+    onChange={setValue}
+    sx={{
+        backgroundColor: "var(--primaryBackground)",
+        color: "var(--primaryForeground)",
+        "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "var(--inputBorder)",
+        },
+        "& .MuiSvgIcon-root": {
+            color: "var(--accentIconForeground)",
+        },
+    }}
+/>
+```
+
+#### What to Do (Inheritance-First)
+Wrap your form element in `VertiGisThemeProvider`. Standard MUI controls inherit all colors, borders, and interaction states natively:
+
+```tsx
+// ✅ CORRECT: Zero color injection. Inherits seamlessly from VertiGisThemeProvider.
+<VertiGisThemeProvider isDark={isDark}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <DatePicker
+            value={value}
+            onChange={(newVal) => props.setValue(newVal)}
+            slotProps={{
+                textField: {
+                    size: "small",
+                    fullWidth: true,
+                    disabled: !props.enabled,
+                    inputProps: { readOnly: props.readOnly },
+                },
+            }}
+        />
+        <TextField
+            label={props.label || "Inspection Notes"}
+            value={props.value ?? ""}
+            onChange={(e) => props.setValue(e.target.value)}
+            size="small"
+            fullWidth
+            disabled={!props.enabled}
+            inputProps={{ readOnly: props.readOnly }}
+        />
+    </Box>
+</VertiGisThemeProvider>
+```
+
+#### Strict Boundary: When IS Token Injection Allowed?
+| UI Element | Styling Approach | Allowed Styling |
+| :--- | :--- | :--- |
+| **Standard Form Controls** (`DatePicker`, `TextField`, `Select`) | **Pure Theme Inheritance** | Layout and sizing only (`size`, `margin`, `fullWidth`, `minHeight: 44px`). **Zero color or border overrides**. |
+| **Standard Buttons & Toggles** (`Button`, `Switch`, `Checkbox`) | **Pure Theme Inheritance** | Variant only (`variant="contained"`, `variant="outlined"`). Inherits accent and focus states. |
+| **MUI Typography** (`Typography`) | **Variant-Driven** | `variant="h6"`, `variant="body1"`. Colors inherit from `theme.palette.text`. |
+| **Custom Status / Alert Banners** | **Explicit Semantic Tokens** | `var(--alertAmberBackground)`, `var(--alertRedForeground)`, `var(--alertGreenBorder)`. |
+| **Subtle Tints & Overlays** | **Dynamic `color-mix()`** | `color-mix(in srgb, var(--primaryAccent) 12%, transparent)` for row highlights. |
+| **Non-CSS Canvas / Signatures / Barcodes** | **Programmatic Access** | Canvas stroke fills using `isDarkTheme()`, SVG `fill="var(--accentIconForeground)"`. |
 
 ---
 

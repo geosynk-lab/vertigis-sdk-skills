@@ -34,9 +34,11 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 - **Font Family**: Use `fontFamily: "var(--defaultFont, sans-serif)"` (inherited automatically via MUI theme).
 - **Mobile & Field Form Readability**: Ensure minimum text sizing (at least 14px / `body2` on mobile screens) and comfortable line-height for readability in high-glare outdoor environments.
 
-## 2. Color & Design Tokens Subsystem
+## 2. Color & Design Tokens Subsystem (Pure Theme Inheritance & Zero Color Injection)
 - **Zero Hardcoded Colors**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values for UI chrome, backgrounds, text, and borders.
 - **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`) to ensure resilient rendering in headless, disconnected, or preview environments.
+- **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisWorkflowMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
+- **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, signature pads, barcode viewfinders, PDF exports, SVG vector paths).
 - **Standardized Token Architecture**: Group all tokens under a `tokens/` directory:
   - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, status, and touch tokens.
   - `tokens/typography.ts`: Typography hierarchy, font families, and weights.

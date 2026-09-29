@@ -11,7 +11,7 @@ For complex elements, refer to [React Component Decomposition](./04_react_compon
 import * as React from "react";
 import { FormElementProps, FormElementRegistration } from "@vertigis/workflow";
 import { Box, TextField, Typography } from "@mui/material";
-import { tokens } from "./tokens";
+import { tokens, VertiGisThemeProvider } from "./tokens";
 import { FormElementErrorBoundary } from "./components/FormElementErrorBoundary";
 
 /**
@@ -51,7 +51,7 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
         setProperty("secondaryStatus", newVal.length >= 6 ? "Valid" : "Too short");
     };
 
-    // 2. Render UI with Typography variants, tokenized container, mobile touch targets & standard prop wiring
+    // 2. Render UI with Typography variants, container tokenization, mobile touch targets & standard prop wiring
     return (
         <Box
             sx={{
@@ -70,8 +70,6 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
                 <Typography
                     variant="subtitle1"
                     sx={{
-                        color: tokens.ui.text.primary,
-                        fontFamily: tokens.typography.fontFamily.primary,
                         fontWeight: tokens.typography.fontWeight.semibold,
                     }}
                 >
@@ -79,67 +77,26 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
                 </Typography>
                 <Typography
                     variant="body2"
-                    sx={{
-                        color: tokens.ui.text.secondary,
-                        fontFamily: tokens.typography.fontFamily.primary,
-                    }}
+                    color="text.secondary"
                 >
                     Enter the field inspection value. Changes persist across workflow form tabs.
                 </Typography>
             </Box>
 
-            {/* Input Field with Mobile Touch Target (minHeight: 44px) and State Wiring */}
+            {/* Input Field: Pure Theme Inheritance. Zero color injection.
+                Inherits notchedOutline borders, hover, focus, and disabled states from ThemeProvider. */}
             <TextField
                 fullWidth
                 variant="outlined"
                 placeholder={customPlaceholder}
                 value={value ?? ""}
                 disabled={!enabled}
-                helperText={
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            color: !enabled
-                                ? tokens.ui.text.disabled
-                                : tokens.ui.text.secondary,
-                        }}
-                    >
-                        Required minimum 6 characters for valid status.
-                    </Typography>
-                }
+                helperText="Required minimum 6 characters for valid status."
                 inputProps={{
                     readOnly,
                     "aria-label": "Custom Input Field",
-                    style: { minHeight: "24px" },
                 }}
                 onChange={(e) => handleChange(e.currentTarget.value)}
-                sx={{
-                    backgroundColor: readOnly
-                        ? tokens.ui.surface.secondary
-                        : tokens.ui.surface.primary,
-                    borderRadius: tokens.ui.shape.borderRadius,
-                    "& .MuiInputBase-root": {
-                        minHeight: tokens.ui.touch.minHeight, // Mobile 44x44px touch target compliance
-                    },
-                    "& .MuiInputBase-input": {
-                        color: !enabled
-                            ? tokens.ui.text.disabled
-                            : tokens.ui.text.primary,
-                        fontFamily: tokens.typography.fontFamily.primary,
-                        fontSize: tokens.typography.fontSize.body2, // Minimum 14px for outdoor readability
-                    },
-                    "& .MuiOutlinedInput-root": {
-                        "& fieldset": {
-                            borderColor: tokens.ui.border.primary,
-                        },
-                        "&:hover fieldset": {
-                            borderColor: tokens.ui.accent.primary,
-                        },
-                        "&.Mui-focused fieldset": {
-                            borderColor: tokens.ui.accent.primary,
-                        },
-                    },
-                }}
             />
         </Box>
     );
@@ -148,7 +105,9 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
 export function MyElement(props: MyElementProps): React.ReactElement {
     return (
         <FormElementErrorBoundary>
-            <MyElementView {...props} />
+            <VertiGisThemeProvider>
+                <MyElementView {...props} />
+            </VertiGisThemeProvider>
         </FormElementErrorBoundary>
     );
 }
