@@ -820,9 +820,65 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
 | **Derived tints and overlays** | **`color-mix()`** | `color-mix(in srgb, var(--primaryAccent) 15%, transparent)` |
 | **Inline `sx` sprawl** | **STRICTLY BANNED** | Avoid scattering verbose `sx={{ ... }}` objects on general elements. |
 
+#### 5. Strict Ban on Token Re-Aliasing & Global `:root` Pollution
+
+##### The Anti-Pattern: Shadow Tokens & Multi-Hop Indirection
+A common pitfall when authoring custom widget CSS is creating local shadow variables or re-aliasing official VertiGIS design tokens through intermediate layers:
+
+```css
+/* ❌ DANGEROUS ANTI-PATTERN: Multi-hop indirection & global :root pollution */
+:root {
+    --color-background: var(--primaryBackground);
+    --color-foreground: var(--primaryForeground);
+    --color-card: var(--secondaryBackground);
+    
+    /* Layer 2 indirection */
+    --monitoring-bg: var(--color-background);
+    --monitoring-surface: var(--color-card);
+    --monitoring-text: var(--primaryForeground);
+}
+
+.monitoring-card {
+    background: var(--monitoring-bg);
+    color: var(--monitoring-text);
+}
+```
+
+##### Why This Is Harmful
+1. **Triple Indirection & Cognitive Friction**: To find out what color `--monitoring-bg` resolves to, a developer must trace `--monitoring-bg` → `--color-background` → `var(--primaryBackground)` → host `.vsw-app`. This unnecessary hop makes stylesheets difficult to read, audit, and refactor.
+2. **Design System Fragmentation**: When intermediate aliases exist, developers and AI agents invent conflicting names (`--monitoring-text`, `--color-foreground`, `--card-text`). Different components in the same codebase end up consuming different alias layers, breaking consistent theming across light and dark modes.
+3. **Global Scope Pollution via `:root`**: Custom libraries are embedded guest widgets running inside a host VertiGIS Studio Web shell (`.vsw-app`). Injecting a `:root { ... }` block in a custom library's CSS injects global variables at the `<html>` document root, risking collisions or unwanted overrides with the host shell or other third-party extensions.
+4. **DevTools Obfuscation**: In browser DevTools, inspecting an element displays a deep chain of uncomputed CSS variables instead of the active design token and its computed value.
+
+##### The Clean Architecture: Direct Host Token Consumption
+Consume the official VertiGIS host CSS variables directly in component rules, always accompanied by a WCAG AA fallback value:
+
+```css
+/* ✅ CLEAN ARCHITECTURE: Direct token consumption in namespaced CSS */
+.MonitoringCard {
+    background: var(--primaryBackground, #ffffff);
+    color: var(--primaryForeground, #212121);
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+}
+
+.MonitoringCard-secondary {
+    background: var(--secondaryBackground, #f5f5f5);
+    color: var(--secondaryForeground, #666666);
+}
+```
+
+##### Permissible vs. Prohibited CSS Custom Properties
+| Category | Allowed? | Rule & Proper Usage |
+| :--- | :---: | :--- |
+| **Direct Host Tokens** | ✅ **Mandatory** | Reference directly in properties: `var(--primaryBackground, #ffffff)`, `var(--primaryForeground, #212121)`. |
+| **Color Shadow Aliases** (`--color-*`, `--mycomp-bg`) | ❌ **Banned** | Never create intermediate alias layers that mirror host tokens. |
+| **Global `:root` Injection** | ❌ **Banned** | Never declare `:root { ... }` in custom library CSS files. |
+| **Component Layout Variables** | ✅ **Permissible** | Scoped strictly to the component selector (e.g. `.MonitoringTable { --row-height: 36px; }`), strictly for layout/dimension calculations, never for colors. |
+
 ---
 
-### 5. Non-CSS Renderers Integration Patterns
+### 6. Non-CSS Renderers Integration Patterns
 
 #### A. Plotly.js Dynamic Theming
 When embedding charting in GIS widgets, synchronize the chart template, axes, and background colors with `useIsDarkTheme()`:
