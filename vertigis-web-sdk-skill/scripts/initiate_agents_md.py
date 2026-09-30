@@ -17,35 +17,33 @@ END_MARKER = "<!-- vertigis-web-sdk:end -->"
 
 DIRECTIVES_BODY = """# VertiGIS Studio Web SDK Development Directives
 
-> **Mandatory Agent Directive**: Whenever you make any change to or create any web component in this repository, ALWAYS check and verify it against VertiGIS Web SDK standards (LayoutElement wrapper, MobX observer, MUI components with sx tokens, zero hardcoded colors, design token architecture, dual-theme adaptation, strict 150–250 line component modularity, and ErrorBoundary wrapper).
+> **Mandatory Agent Directive**: Whenever you make any change to or create any web component in this repository, ALWAYS check and verify it against VertiGIS Web SDK standards (LayoutElement wrapper, MobX observer, semantic HTML with co-located namespaced CSS, host theme inheritance, zero custom ThemeProviders, zero @vertigis/web/ui UI controls, strict 150–250 line component modularity, and ErrorBoundary wrapper).
 
-## 1. Typography System
-- **Strict ban on raw HTML text elements**: Never use raw `<span>`, `<p>`, or `<h1>`-`<h6>` tags.
-- **MUI Typography Component**: Always use `@mui/material` `<Typography variant="...">`:
-  - `h5`, `h6`: Widget titles and primary container headers.
-  - `subtitle1`, `subtitle2`: Section headers, grouping titles, and card subheadings.
-  - `body1`, `body2`: Primary and secondary descriptive body text.
-  - `caption`, `overline`: Microcopy, timestamps, metadata labels, and status badges.
-- **Semantic Text Color Tokens**: Always pair Typography variants with semantic foreground tokens via `sx`:
+## 1. Typography & Semantic Markup System
+- **Semantic HTML Elements**: Build component UI using standard semantic HTML elements (`<h1>`-`<h6>`, `<p>`, `<span>`, `<button>`, `<div>`, `<section>`).
+- **Strict Ban on `@vertigis/web/ui` UI Controls**: NEVER import UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`, etc.) from `@vertigis/web/ui`. These internal components depend on `useUIContext()`, which is undefined in unit tests (`vitest run`), detached React portals, or custom modals, causing fatal `TypeError: Cannot read properties of undefined (reading 'translate')` crashes. Reserve `@vertigis/web/ui` strictly for non-UI SDK hooks when needed (e.g. `useWatchAndRerender`).
+- **Semantic Text Color Tokens**: Pair text elements with semantic foreground tokens:
   - Primary text: `color: "var(--primaryForeground, #1e1e1e)"`
   - Secondary/muted text: `color: "var(--secondaryForeground, #666666)"`
   - Inactive/disabled text: `color: "var(--disabledForeground, #9e9e9e)"`
-- **Font Family**: Use `fontFamily: "var(--defaultFont)"` (inherited automatically through MUI components).
+- **Font Family**: Use `fontFamily: "var(--defaultFont)"`.
 
-## 2. Color & Design Tokens Subsystem (Pure Theme Inheritance & Zero Color Injection)
+## 2. Color & Design Tokens Subsystem (Host Theme Inheritance & Zero Custom ThemeProviders)
 - **Zero Hardcoded Colors**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values for UI chrome, backgrounds, text, and borders.
-- **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`) to ensure resilient rendering in headless, disconnected, or preview environments.
-- **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
-- **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, PDF exports, SVG vector paths).
+- **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`) to ensure resilient rendering in headless, disconnected, or preview environments.
+- **Host-Owned Branding Principle**: The host application shell (`.vsw-app`) strictly owns and manages all branding and themes via CSS custom properties configured in `app-config.json` / Designer. Components must NEVER create independent brands or redefine app branding.
+- **Strict Ban on Custom Theme Providers**: NEVER wrap custom widgets in a custom `VertiGisThemeProvider` / `createVertiGisMuiTheme` attempting to pass CSS variables to MUI `createTheme()`. Passing `var(...)` strings without explicit color decomposition parameters causes MUI's `augmentColor()` to crash across browsers with `Error: MUI: Unsupported var(...) color`. Custom widgets natively inherit the host theme via CSS custom properties on `.vsw-app`.
+- **Co-Located Component CSS Architecture**:
+  - Pair every component view (`ComponentName.tsx`) with a co-located CSS file (`ComponentName.css`), following official `@vertigis/web-sdk` template conventions (`PointsOfInterest.css`).
+  - **Strict Class Namespacing**: Because Webpack compiles CSS via `style-loader` without CSS Modules hashing, all classes in `*.css` are injected into global `<head>`. All classes MUST be strictly namespaced with the component name (e.g. `.ListHeader`, `.ListHeader-title` or `.list-header__title`). Strictly BANNED: generic classes like `.header`, `.title`, `.item`, `.button`, `.card`, `.active`.
+  - **Minimal Style Injection & Style Hierarchy**: (1) Co-located `ComponentName.css` for static layouts, cards, hover states, and structural chrome. (2) Native `style={{ ... }}` ONLY for purely dynamic runtime calculations (e.g. calculated widths or coordinates). (3) Strict ban on scattering loose, repetitive `sx={{ ... }}` objects across markup. Rely on parent inheritance and tokens.
 - **Standardized Token Architecture**: Group all tokens under a `tokens/` directory:
   - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, and alert tokens.
   - `tokens/typography.ts`: Typography hierarchy, font families, and weights.
-  - `tokens/index.ts`: Central barrel export.
+  - `tokens/index.ts`: Central barrel export (never export `muiTheme`).
 - **Dynamic Dual-Theme Adaptation**:
   - Use `color-mix(in srgb, ...)` for derived tints, hover states, muted borders, and transparent overlays to adapt automatically to light and dark themes without manual CSS overrides.
-  - Use the canonical reactive `useIsDarkTheme()` hook for DOM/shell theme detection.
-  - Use `isDarkTheme()` standalone utility for non-CSS contexts (Plotly, canvas renderers, third-party iframe bridges, PDF exports).
-- **MUI Theme Integration**: Apply `createTheme` overrides and `ThemeProvider` to align composite controls (sliders, toggle buttons, pickers) with VertiGIS shell branding.
+  - Chart/Canvas Theming: Standalone renderers (Nivo, Plotly, HTML5 Canvas) should read CSS variables or token constants directly without requiring complex reactive hooks (`useIsDarkTheme`).
 - **GIS Visual Hierarchy**: Keep UI chrome neutral and subdued so the GIS map canvas remains the focal point. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text).
 
 ## 3. Strict Component Modularity & Anti-God-Component Architecture

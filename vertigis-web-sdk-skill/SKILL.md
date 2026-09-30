@@ -20,12 +20,15 @@ Generate flawless, production-ready, enterprise-grade code for VertiGIS Studio W
 ## 3. Rules (CRITICAL AGENT DIRECTIVES)
 You MUST adhere to the following rules without exception:
 
-1. **Typography System**: Strict ban on raw HTML text elements (`<span>`, `<p>`, `<h1>`-`<h6>`, `<strong>`, `<em>`). All text MUST use `@mui/material` `<Typography variant="...">` (`h5`, `h6` for widget titles; `subtitle1`, `subtitle2` for section headers; `body1`, `body2` for primary/secondary content; `caption`, `overline` for microcopy/status badges). Always pair with semantic text color tokens (`var(--primaryForeground, #1e1e1e)`, `var(--secondaryForeground, #666666)`, `var(--disabledForeground, #9e9e9e)`) and font token `var(--defaultFont)`.
-2. **Color & Design Tokens Subsystem (Pure Theme Inheritance & Zero Color Injection)**: Strict ban on hardcoded hex (`#ffffff`, `#1976d2`), RGB (`rgb(...)`), or HSL colors for UI chrome, backgrounds, text, and borders. ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`) to ensure resilient rendering in headless, disconnected, or preview environments. Structure component styling around a standardized `tokens/` directory (`ui.ts`, `typography.ts`, `index.ts`).
-   - **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
-   - **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, PDF exports, SVG vector paths).
-   - **Dynamic Theming**: For non-CSS contexts, use the standalone `isDarkTheme()` utility. In React contexts, use the reactive `useIsDarkTheme()` hook and apply MUI `createTheme` overrides with `ThemeProvider` for composite controls. Keep UI chrome neutral so the GIS map remains the primary focus. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text) across both themes.
-3. **No Custom CSS / CSS Modules**: NEVER generate `*.css` or `*.module.css` files. Minimize injected CSS. Inherit from parent styles natively via tokens and MUI `sx`. Standard MUI inputs must not have redundant inline style overrides.
+1. **Typography & Semantic Markup System**: Strict ban on importing UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`, etc.) from `@vertigis/web/ui`. These internal shell components depend on `useUIContext()`, which is undefined in unit tests (`vitest run`), detached React portals, or custom modals, causing fatal `TypeError: Cannot read properties of undefined (reading 'translate')` crashes. Build component UI using standard semantic HTML elements (`<h1>`-`<h6>`, `<p>`, `<span>`, `<button>`, `<div>`, `<section>`). Style text using VertiGIS typography variables (`font-family: var(--defaultFont)`, `line-height: ...`) and semantic text color tokens (`var(--primaryForeground, #1e1e1e)`, `var(--secondaryForeground, #666666)`, `var(--disabledForeground, #9e9e9e)`). Reserve `@vertigis/web/ui` strictly for non-UI SDK hooks when needed (e.g. `useWatchAndRerender`).
+2. **Color & Design Tokens Subsystem (Host Theme Inheritance & Zero Custom ThemeProviders)**: Strict ban on hardcoded hex (`#ffffff`, `#1976d2`), RGB (`rgb(...)`), or HSL colors for UI chrome, backgrounds, text, and borders. ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`) to ensure resilient rendering in headless, disconnected, or preview environments. Structure component styling around a standardized `tokens/` directory (`ui.ts`, `typography.ts`, `index.ts`).
+   - **Host-Owned Branding Principle**: The host application shell (`.vsw-app`) strictly owns and manages all branding and themes via CSS custom properties configured in `app-config.json` / Designer. Components must NEVER create independent brands or redefine app branding.
+   - **Strict Ban on Custom Theme Providers**: NEVER wrap custom widgets in a custom `VertiGisThemeProvider` / `createVertiGisMuiTheme` attempting to pass CSS variables to MUI `createTheme()`. Passing `var(...)` strings without explicit color decomposition parameters causes MUI's `augmentColor()` to crash across browsers with `Error: MUI: Unsupported var(...) color`. Custom widgets natively inherit the host theme via CSS custom properties on `.vsw-app`.
+   - **Chart/Canvas Theming**: Standalone renderers (Nivo, Plotly, HTML5 Canvas) should read CSS variables or token constants directly without requiring complex reactive hooks (`useIsDarkTheme`). Keep UI chrome neutral so the GIS map remains the primary focus. Ensure WCAG AA contrast compliance (minimum 4.5:1 for normal text, 3:1 for large text) across both themes.
+3. **Co-Located Component CSS & Minimal Style Injection**:
+   - **Co-Located CSS Pattern**: Pair every component view (`ComponentName.tsx`) with a co-located CSS file (`ComponentName.css`), following the official `@vertigis/web-sdk` starter template architecture (`PointsOfInterest.css`).
+   - **Strict Class Namespacing (Host Shell Safety)**: Because the SDK Webpack pipeline compiles CSS via `style-loader` without CSS Modules hashing, all classes in `*.css` are injected globally into the host `<head>`. All classes MUST be strictly namespaced with the component name or BEM (e.g. `.ListHeader`, `.ListHeader-title` or `.list-header__title`). Strictly BANNED: generic classes like `.header`, `.title`, `.item`, `.button`, `.card`, `.active`.
+   - **Minimal Style Injection & Style Hierarchy**: (1) Co-located `ComponentName.css` for static layouts, cards, hover states, and structural chrome. (2) Native `style={{ ... }}` ONLY for purely dynamic runtime calculations (e.g. calculated widths or coordinates). (3) Strict ban on scattering loose, repetitive `sx={{ ... }}` objects across markup. Rely on parent inheritance and tokens.
 4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
 5. **Exposing Properties to Designer (Settings Schema Protocol)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**: (1) `getLayoutDesignerSettingsSchema` declaring field IDs, types (`text`, `number`, `checkbox`, `select`), display names, and tooltips, (2) `getLayoutDesignerSettings` reading XML attributes via `args.node.attributes.get(...)`, and (3) `applyLayoutDesignerSettings` persisting values back via `args.node.attributes.set(...)` and synchronizing the live model via `model.updateConfig(...)`.
 6. **LayoutElement Wrapper**: Every component view MUST wrap its content inside `<LayoutElement {...props}>` (imported from `@vertigis/web/components`) for layout slotting and Designer support.
@@ -160,12 +163,12 @@ export class CustomWidgetModel extends ComponentModelBase {
 ```tsx
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Box, Typography } from "@mui/material";
 import {
     LayoutElement,
     LayoutElementProperties,
 } from "@vertigis/web/components";
 import { CustomWidgetModel } from "./CustomWidgetModel";
+import "./CustomWidget.css";
 
 interface CustomWidgetProps extends LayoutElementProperties<CustomWidgetModel> {}
 
@@ -173,62 +176,80 @@ const CustomWidget = observer(function CustomWidget(props: CustomWidgetProps) {
     const { model } = props;
     return (
         <LayoutElement {...props}>
-            <Box
-                sx={{
-                    p: 2,
-                    backgroundColor: "var(--primaryBackground, #ffffff)",
-                    border: "1px solid var(--primaryBorder, #e0e0e0)",
-                    borderRadius: "var(--borderRadius, 4px)",
-                }}
-            >
-                {/* Header with Typography System */}
-                <Typography
-                    variant="h6"
-                    sx={{
-                        color: "var(--primaryForeground, #212121)",
-                        fontFamily: "var(--defaultFont)",
-                        mb: 0.5,
-                    }}
-                >
-                    {model.title}
-                </Typography>
-
-                <Typography
-                    variant="subtitle2"
-                    sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}
-                >
-                    Component Overview & State
-                </Typography>
+            <div className="CustomWidget">
+                {/* Header with Semantic Markup & Namespaced CSS */}
+                <h2 className="CustomWidget-title">{model.title}</h2>
+                <p className="CustomWidget-subtitle">Component Overview & State</p>
 
                 {/* Nested Surface with Design Tokens */}
-                <Box
-                    sx={{
-                        p: 1.5,
-                        backgroundColor: "var(--secondaryBackground, #f5f5f5)",
-                        border: "1px solid var(--primaryBorder, #e0e0e0)",
-                        borderRadius: "var(--borderRadius, 4px)",
-                        mb: 1.5,
-                    }}
-                >
-                    <Typography variant="body1" sx={{ color: "var(--primaryForeground, #212121)", mb: 0.5 }}>
-                        Primary content description.
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: "var(--secondaryForeground, #666666)" }}>
+                <div className="CustomWidget-card">
+                    <p className="CustomWidget-body">Primary content description.</p>
+                    <p className="CustomWidget-caption">
                         Secondary helper details and configuration info.
-                    </Typography>
-                </Box>
+                    </p>
+                </div>
 
                 {model.map && (
-                    <Typography variant="caption" sx={{ color: "var(--secondaryForeground, #666666)", display: "block" }}>
+                    <span className="CustomWidget-meta">
                         Attached Map ID: {model.map.id}
-                    </Typography>
+                    </span>
                 )}
-            </Box>
+            </div>
         </LayoutElement>
     );
 });
 
 export default CustomWidget;
+```
+
+#### Co-Located Component CSS (`src/components/CustomWidget/CustomWidget.css`)
+```css
+.CustomWidget {
+    padding: 1rem;
+    background-color: var(--primaryBackground, #ffffff);
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+}
+
+.CustomWidget-title {
+    margin: 0 0 0.25rem 0;
+    font-family: var(--defaultFont);
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--primaryForeground, #212121);
+}
+
+.CustomWidget-subtitle {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    color: var(--secondaryForeground, #666666);
+}
+
+.CustomWidget-card {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background-color: var(--secondaryBackground, #f5f5f5);
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+}
+
+.CustomWidget-body {
+    margin: 0 0 0.25rem 0;
+    color: var(--primaryForeground, #212121);
+    font-size: 0.875rem;
+}
+
+.CustomWidget-caption {
+    margin: 0;
+    color: var(--secondaryForeground, #666666);
+    font-size: 0.75rem;
+}
+
+.CustomWidget-meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--secondaryForeground, #666666);
+}
 ```
 
 ### C. Exposing Properties to Designer (Settings Schema Protocol)

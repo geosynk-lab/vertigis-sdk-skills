@@ -96,9 +96,9 @@ This generates the production output in the `dist/` directory, typically includi
 - **Dynamic Color Mixing**: Use `color-mix(in srgb, ...)` (or `alphaMix()` / `surfaceMix()` helpers) for derived tints, hover states, muted borders, and transparent overlays. Never use static RGBA values like `rgba(0, 0, 0, 0.08)`, which fail in dark themes.
 - **Dual-Context Theme Detection**:
   - In React components: Use the reactive `useIsDarkTheme()` hook to track DOM theme mutations and OS preferences.
-  - In non-CSS contexts (Plotly charts, HTML5 Canvas, SVG generators, jsPDF exports): Call the standalone `isDarkTheme()` synchronous utility to inspect theme classes, background luminance, and OS media queries.
-- **MUI Theme Harmonization**: Wrap composite MUI controls (`<Slider>`, `<Switch>`, `<DatePicker>`, `<Select>`) in `VertiGisThemeProvider` (or configure via `createVertiGisMuiTheme`) so internal SVG icons, canvas elements, and surfaces synchronize with VertiGIS branding rather than default MUI blues.
-- For complete token dictionaries, helper implementations, theme hook source code, and MUI theme setup, see the [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).
+- **Host-Owned Theming & Co-Located Namespaced CSS**: The VertiGIS shell (`.vsw-app`) automatically injects all branding variables. Custom widgets inherit host branding natively via CSS Custom Properties. Never create custom MUI `ThemeProvider` wrappers (which trigger fatal color decomposition crashes in MUI). Use co-located `ComponentName.css` with component-namespaced classes (`.ListHeader`) for clean, maintainable layout styling.
+- **UI Component Safety**: Never import UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`) from `@vertigis/web/ui`—they depend on `UIContext` from the live shell and crash with `Cannot read properties of undefined` in unit tests, portals, and modals. Use standard HTML/JSX primitives instead.
+- For complete token dictionaries, helper implementations, and co-located CSS architecture, see the [Design Tokens & Theming Guide](./11_design_tokens_and_theming.md).
 
 ### G. ArcGIS Enterprise & Secured Portal Authentication
 When referencing secured Web Maps or operational layers hosted in an on-premise ArcGIS Enterprise Portal (e.g. `https://gis.company.com/portal`) or private ArcGIS Online organization:

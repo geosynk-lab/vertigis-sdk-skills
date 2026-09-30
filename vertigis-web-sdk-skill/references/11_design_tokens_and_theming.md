@@ -12,8 +12,9 @@
 - [Dynamic Dual-Theme System](#dynamic-dual-theme-system)
   - [1. Standalone Synchronous Theme Detection (`src/utils/isDarkTheme.ts`)](#1-standalone-synchronous-theme-detection-srcutilsisdarkthemets)
   - [2. Canonical Reactive Hook (`src/hooks/useIsDarkTheme.ts`)](#2-canonical-reactive-hook-srchooksuseisdarkthemets)
-  - [3. MUI Theme Overrides & `VertiGisThemeProvider` Bridge (`src/tokens/muiTheme.ts`)](#3-mui-theme-overrides--vertigisthemeprovider-bridge-srctokensmuithemet)
-  - [4. Non-CSS Renderers Integration Patterns](#4-non-css-renderers-integration-patterns)
+  - [3. Host-Owned Theming & Elimination of ThemeProviders](#3-host-owned-theming--elimination-of-themeproviders)
+  - [4. Co-Located Namespaced CSS Architecture (`ComponentName.css`)](#4-co-located-namespaced-css-architecture-componentnamecss)
+  - [5. Non-CSS Renderers Integration Patterns](#5-non-css-renderers-integration-patterns)
 - [Component Modularity Architecture](#component-modularity-architecture)
   - [1. Standard 7-Directory Blueprint](#1-standard-7-directory-blueprint)
   - [2. File Size Thresholds & Enforcement Rules](#2-file-size-thresholds--enforcement-rules)
@@ -79,7 +80,6 @@ The design token subsystem is organized into a dedicated `tokens/` directory wit
 src/tokens/
 ├── ui.ts             # Surface, text, border, accent, control, status, and shape tokens
 ├── typography.ts     # Font stacks, font scale, weights, and line heights
-├── muiTheme.ts       # MUI Theme factory and VertiGisThemeProvider bridge
 └── index.ts          # Central barrel export and color-mix runtime utilities
 ```
 
@@ -417,7 +417,6 @@ The CSS Color Module Level 5 `color-mix()` specification provides native browser
 
 export * from "./ui";
 export * from "./typography";
-export * from "./muiTheme";
 
 /**
  * Generates a CSS color-mix() string blending a base token with transparency.
@@ -702,234 +701,124 @@ export function useIsDarkTheme(): boolean {
 
 ---
 
-### 3. MUI Theme Overrides & `VertiGisThemeProvider` Bridge (`src/tokens/muiTheme.ts`)
+### 3. Host-Owned Theming & Elimination of ThemeProviders
 
-Composite controls in `@mui/material` (such as `<Slider>`, `<Switch>`, `<Select>`, `<DatePicker>`, `<Tabs>`, and `<Paper>`) contain deep internal elements that query the MUI `theme.palette` object. Without an explicit `ThemeProvider`, these controls fall back to default MUI blue (`#1976d2`) and default light/dark elevation backgrounds.
+In VertiGIS Studio Web, branding and visual identity are owned, configured, and managed exclusively by the **host application shell** (`.vsw-app`) via the `branding` service in `app-config.json` and Designer.
 
-`createVertiGisMuiTheme` bridges VertiGIS design tokens to MUI internals and disables MUI's default dark-mode elevation paper tint:
-
-```tsx
-import * as React from "react";
-import { createTheme, ThemeProvider, Theme } from "@mui/material/styles";
-import { UI_TOKENS } from "./ui";
-import { TYPOGRAPHY_TOKENS } from "./typography";
-import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
-
-/**
- * Creates an MUI Theme configured to align with VertiGIS Studio Web design tokens.
- *
- * @param isDark - Whether the theme is currently in dark mode.
- * @returns Configured Material UI Theme object.
- */
+#### The Crash of Custom ThemeProviders
+Previously, custom extensions attempted to bridge VertiGIS tokens into Material UI by creating a custom theme provider:
+```typescript
+// ❌ CRASH ANTI-PATTERN: Passing CSS variables into createTheme()
 export function createVertiGisMuiTheme(isDark: boolean): Theme {
     return createTheme({
         palette: {
-            mode: isDark ? "dark" : "light",
-            primary: {
-                main: UI_TOKENS.accent.primary,
-                light: UI_TOKENS.accent.light,
-                dark: UI_TOKENS.accent.hover,
-                contrastText: UI_TOKENS.accent.contrastText,
-            },
-            background: {
-                default: UI_TOKENS.surface.primary,
-                paper: UI_TOKENS.surface.secondary,
-            },
-            text: {
-                primary: UI_TOKENS.text.primary,
-                secondary: UI_TOKENS.text.secondary,
-                disabled: UI_TOKENS.text.disabled,
-            },
-            divider: UI_TOKENS.border.primary,
-            error: {
-                main: UI_TOKENS.status.errorFg,
-            },
-            warning: {
-                main: UI_TOKENS.status.warningFg,
-            },
-            success: {
-                main: UI_TOKENS.status.successFg,
-            },
-            info: {
-                main: UI_TOKENS.status.infoFg,
-            },
-            action: {
-                hover: UI_TOKENS.control.itemHover,
-                selected: UI_TOKENS.control.itemSelected,
-                disabledBackground: UI_TOKENS.control.buttonBackgroundDisabled,
-                disabled: UI_TOKENS.text.disabled,
-            },
-        },
-        typography: {
-            fontFamily: TYPOGRAPHY_TOKENS.fontFamily.default,
-            fontSize: 14,
-        },
-        shape: {
-            borderRadius: 4,
-        },
-        components: {
-            MuiPaper: {
-                styleOverrides: {
-                    root: {
-                        // CRITICAL: Disable MUI default dark elevation overlay tint
-                        // which adds an unwanted white overlay gradient in dark mode
-                        backgroundImage: "none",
-                    },
-                },
-            },
-            MuiOutlinedInput: {
-                styleOverrides: {
-                    notchedOutline: {
-                        borderColor: UI_TOKENS.control.inputBorder,
-                    },
-                    root: {
-                        "&:hover .MuiOutlinedInput-notchedOutline": {
-                            borderColor: UI_TOKENS.accent.primary,
-                        },
-                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            borderColor: UI_TOKENS.accent.primary,
-                        },
-                        "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
-                            borderColor: UI_TOKENS.control.inputBorderDisabled,
-                        },
-                    },
-                },
-            },
-            MuiInputLabel: {
-                styleOverrides: {
-                    root: {
-                        color: UI_TOKENS.text.secondary,
-                        "&.Mui-focused": {
-                            color: UI_TOKENS.accent.primary,
-                        },
-                    },
-                },
-            },
-            MuiButton: {
-                styleOverrides: {
-                    root: {
-                        borderRadius: UI_TOKENS.shape.borderRadius,
-                        textTransform: "none", // Align with VertiGIS modern typography
-                        fontWeight: TYPOGRAPHY_TOKENS.fontWeight.medium,
-                    },
-                },
-            },
-            MuiSlider: {
-                styleOverrides: {
-                    root: {
-                        color: UI_TOKENS.accent.primary,
-                    },
-                },
-            },
-            MuiSwitch: {
-                styleOverrides: {
-                    switchBase: {
-                        "&.Mui-checked": {
-                            color: UI_TOKENS.accent.primary,
-                            "& + .MuiSwitch-track": {
-                                backgroundColor: UI_TOKENS.accent.primary,
-                            },
-                        },
-                    },
-                },
-            },
+            error: { main: "var(--alertRedForeground, #d32f2f)" },
         },
     });
 }
-
-export interface VertiGisThemeProviderProps {
-    children: React.ReactNode;
-}
-
-/**
- * Reactive ThemeProvider wrapper for composite MUI controls in VertiGIS extensions.
- * Automatically synchronizes with the host shell theme via useIsDarkTheme().
- */
-export function VertiGisThemeProvider({ children }: VertiGisThemeProviderProps): React.ReactElement {
-    const isDark = useIsDarkTheme();
-    const theme = React.useMemo(() => createVertiGisMuiTheme(isDark), [isDark]);
-
-    return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
-}
 ```
+**Why this crashed**: Material UI's `createTheme()` runs `augmentColor()` to automatically compute hover and focus shades using mathematical color calculations (`decomposeColor` -> `lighten`/`darken`). Because `var(...)` is an unresolvable string in JavaScript, `decomposeColor()` threw a fatal error across all browsers:
+```text
+Error: MUI: Unsupported `var(--alertRedForeground, #d32f2f)` color.
+The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla(), color().
+```
+
+#### Why `@vertigis/web/ui` Controls Crash Outside the Shell
+Attempting to import UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`) from `@vertigis/web/ui` introduces a separate critical vulnerability:
+* These internal components call `useUIContext()` under the hood.
+* In **unit tests (`vitest run`)**, custom modals, detached portal roots, or before the host shell fully mounts, `UIContext` is `undefined`.
+* The component immediately crashes with:
+  ```text
+  TypeError: Cannot read properties of undefined (reading 'translate')
+  ```
+* Furthermore, `@vertigis/web/ui` is an internal package of the host shell, not a stable public component library for extensions.
+
+#### The Architectural Resolution
+1. **Never wrap custom widgets in a custom `ThemeProvider`**: The host shell (`.vsw-app`) injects all CSS variables automatically. Custom widgets inherit this theme natively through the DOM.
+2. **Never import UI controls from `@vertigis/web/ui`**: Build UI using standard HTML elements or approved primitives. Reserve `@vertigis/web/ui` strictly for non-UI SDK hooks when needed (e.g. `useWatchAndRerender`).
+3. **No `muiTheme.ts`**: Extensions do not need `muiTheme.ts` or custom theme factories.
 
 ---
 
-### 4. Pure Theme Inheritance & Zero Color Injection Rule
+### 4. Co-Located Namespaced CSS Architecture (`ComponentName.css`)
 
-#### The Rule: Never Inject Colors into Standard MUI Form Controls
-When using standard Material UI form inputs (`DatePicker`, `TimePicker`, `DateTimePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Slider`, `Tabs`), **never inject inline color styles** via `sx={{ color, backgroundColor, borderColor }}` or CSS classes.
+The gold standard for styling custom VertiGIS Studio Web extensions aligns with the official SDK starter template architecture (as seen in `template/src/components/PointsOfInterest/PointsOfInterest.css`).
 
-#### Why Micro-Injecting Colors Fails
-1. **Destroys Dynamic Pseudo-States**: Manual `sx` color overrides break built-in `:hover`, `:focus-visible`, `:disabled`, `:selected`, and ripple animations.
-2. **Breaks Theme Synchronization**: When the application transitions between light and dark themes, hardcoded inline styles fail to transition cleanly or produce unreadable contrast collisions.
-3. **Bloats Code with Brittle Boilerplate**: Composite controls like `<DatePicker>` have deep sub-component trees (dialog modals, calendars, year grids, day buttons). Attempting to micro-style them with CSS selectors creates hundreds of lines of fragile styling.
-
-#### What NOT to Do (Anti-Pattern)
-```tsx
-// ❌ WRONG: Micro-injecting tokens into internal MUI subcomponents
-<DatePicker
-    value={selectedDate}
-    onChange={handleDateChange}
-    sx={{
-        backgroundColor: "var(--primaryBackground)",
-        color: "var(--primaryForeground)",
-        "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "var(--inputBorder)",
-        },
-        "& .MuiSvgIcon-root": {
-            color: "var(--accentIconForeground)",
-        },
-        "& .MuiPickersDay-root": {
-            color: "var(--primaryForeground)",
-            "&.Mui-selected": {
-                backgroundColor: "var(--primaryAccent)",
-                color: "var(--emphasizedButtonForeground)",
-            },
-        },
-    }}
-/>
+#### 1. Co-Location Pattern
+Every React view (`ComponentName.tsx`) is accompanied by a co-located CSS file (`ComponentName.css`) in the same folder:
+```
+src/components/ListHeader/
+├── ListHeader.tsx        # Pure JSX layout and component logic
+├── ListHeader.css        # Focused, namespaced component styling
+└── index.ts
 ```
 
-#### What to Do (Inheritance-First)
-Wrap your view or widget root inside `VertiGisThemeProvider`. All form controls, pickers, calendar popovers, and buttons inherit 100% of their theme styles automatically:
+#### 2. Strict Class Namespacing (Host Shell Safety)
+The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css-loader` without CSS Modules class hashing. This means **every CSS rule is injected directly into `<head><style>` as a global page style**.
 
-```tsx
-// ✅ CORRECT: Zero color injection. Inherits seamlessly from VertiGisThemeProvider.
-<VertiGisThemeProvider>
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <DatePicker
-            value={selectedDate}
-            onChange={handleDateChange}
-            slotProps={{
-                textField: {
-                    size: "small",
-                    fullWidth: true,
-                    disabled: !enabled,
-                },
-            }}
-        />
-        <TextField
-            label="Notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            size="small"
-            fullWidth
-            disabled={!enabled}
-        />
-    </Box>
-</VertiGisThemeProvider>
-```
+* **Strictly Prohibited (Generic Class Names)**:
+  `.header`, `.title`, `.item`, `.button`, `.card`, `.active`, `.disabled`, `.content`.
+  *(These collide with the VertiGIS host shell `.vsw-app`, ArcGIS JS API widgets, or other custom libraries).*
+* **Mandatory (Component-Namespaced Class Names)**:
+  Prefix every class with the component name or BEM convention:
+  `.ListHeader`, `.ListHeader-title`, `.ListHeader-toolbar`, `.ListHeader-button`
+  *(or BEM: `.list-header`, `.list-header__title`, `.list-header__button--active`)*.
 
-#### Strict Boundary: When IS Token Injection Allowed?
-| UI Element | Styling Approach | Allowed Styling |
+#### 3. Minimal Style Injection & Clean Separation
+* Keep JSX clean and declarative:
+  ```tsx
+  // ✅ Clean, readable JSX free from inline sx bloat
+  import * as React from "react";
+  import "./ListHeader.css";
+
+  export function ListHeader({ title, count }: { title: string; count: number }) {
+      return (
+          <header className="ListHeader">
+              <h3 className="ListHeader-title">{title}</h3>
+              <span className="ListHeader-badge">{count}</span>
+          </header>
+      );
+  }
+  ```
+* Consume VertiGIS design tokens directly in the co-located CSS file:
+  ```css
+  /* ListHeader.css */
+  .ListHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background-color: var(--primaryBackground, #ffffff);
+      border-bottom: 1px solid var(--primaryBorder, #e0e0e0);
+  }
+
+  .ListHeader-title {
+      margin: 0;
+      font-family: var(--defaultFont);
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--primaryForeground, #212121);
+  }
+
+  .ListHeader-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      border-radius: var(--borderRadius, 4px);
+      background-color: var(--secondaryBackground, #f5f5f5);
+      color: var(--secondaryForeground, #666666);
+  }
+  ```
+
+#### 4. When to Use Native `style={{ ... }}` vs. CSS Classes
+| Styling Need | Mechanism | Example |
 | :--- | :--- | :--- |
-| **Standard Form Controls** (`DatePicker`, `TextField`, `Select`) | **Pure Theme Inheritance** | Layout and sizing only (`size`, `margin`, `fullWidth`, `gap`). **Zero color or border overrides**. |
-| **Standard Buttons & Toggles** (`Button`, `Switch`, `Checkbox`) | **Pure Theme Inheritance** | Variant only (`variant="contained"`, `variant="outlined"`). Inherits accent and focus states. |
-| **MUI Typography** (`Typography`) | **Variant-Driven** | `variant="h6"`, `variant="body1"`. Colors inherit from `theme.palette.text`. |
-| **Custom Status / Alert Banners** | **Explicit Semantic Tokens** | `var(--alertAmberBackground)`, `var(--alertRedForeground)`, `var(--alertGreenBorder)`. |
-| **Subtle Tints & Overlays** | **Dynamic `color-mix()`** | `color-mix(in srgb, var(--primaryAccent) 12%, transparent)` for row highlights. |
-| **Non-CSS Canvas / SVG / Charts** | **Programmatic Access** | `isDarkTheme()`, SVG `fill="var(--accentIconForeground)"`, Plotly templates. |
+| **Component chrome, padding, colors, borders, hover states** | **Co-located `.css`** | `.ListHeader { background: var(--primaryBackground); }` |
+| **Dynamic runtime calculations** (pixel coords, percentages) | **Native `style={{ ... }}`** | `<div style={{ width: `${percentComplete}%` }} />` |
+| **Theme colors & dynamic dark/light values** | **CSS Variables** | `var(--primaryBackground, #ffffff)` with safe fallback |
+| **Derived tints and overlays** | **`color-mix()`** | `color-mix(in srgb, var(--primaryAccent) 15%, transparent)` |
+| **Inline `sx` sprawl** | **STRICTLY BANNED** | Avoid scattering verbose `sx={{ ... }}` objects on general elements. |
 
 ---
 
@@ -1125,7 +1014,7 @@ src/components/InspectionDashboard/
    - **React View (`main.tsx`)**:
      - Serves as a high-level UI coordinator.
      - Extends `LayoutElementProperties<TModel>`.
-     - Wraps children in `<LayoutElement {...props}>`, `<ErrorBoundary>`, and `<VertiGisThemeProvider>`.
+     - Wraps children in `<LayoutElement {...props}>` and `<ErrorBoundary>`, styled via co-located namespaced CSS.
      - Keeps coordinator logic minimal (< 100 lines), delegating UI trees to `components/` and business workflows to `hooks/`.
 
 ---
@@ -1268,17 +1157,15 @@ By applying the 7-directory blueprint and extraction heuristics, the component i
 // ✅ PRODUCTION PATTERN: Clean Orchestrator View (< 70 lines)
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Box } from "@mui/material";
 import { LayoutElement, LayoutElementProperties } from "@vertigis/web/components";
 import { ErrorBoundary } from "../../utils/ErrorBoundary";
-import { VertiGisThemeProvider } from "../../tokens/muiTheme";
-import { UI_TOKENS } from "../../tokens";
 import { InspectionDashboardModel } from "./InspectionDashboardModel";
 import { DashboardHeader } from "./components/DashboardHeader";
 import { FilterPanel } from "./components/FilterPanel";
 import { ResultsTable } from "./components/ResultsTable";
 import { ExportDialog } from "./components/ExportDialog";
 import { useDashboardData } from "./hooks/useDashboardData";
+import "./InspectionDashboard.css";
 
 export const InspectionDashboard = observer(function InspectionDashboard(
     props: LayoutElementProperties<InspectionDashboardModel>
@@ -1297,43 +1184,44 @@ export const InspectionDashboard = observer(function InspectionDashboard(
     return (
         <LayoutElement {...props}>
             <ErrorBoundary fallbackMessage="Failed to render inspection dashboard.">
-                <VertiGisThemeProvider>
-                    <Box
-                        sx={{
-                            p: 2,
-                            height: "100%",
-                            display: "flex",
-                            flexDirection: "column",
-                            backgroundColor: UI_TOKENS.surface.primary,
-                            color: UI_TOKENS.text.primary,
-                        }}
-                    >
-                        <DashboardHeader
-                            title={model.title}
-                            onExportClick={() => setExportOpen(true)}
-                        />
-                        <FilterPanel
-                            filterText={filterText}
-                            onFilterChange={setFilterText}
-                        />
-                        <ResultsTable
-                            records={records}
-                            isLoading={isLoading}
-                            onZoomToFeature={(geom) => model.zoomToFeature(geom)}
-                        />
-                        <ExportDialog
-                            open={exportOpen}
-                            onClose={() => setExportOpen(false)}
-                            onExport={handleExport}
-                        />
-                    </Box>
-                </VertiGisThemeProvider>
+                <div className="InspectionDashboard">
+                    <DashboardHeader
+                        title={model.title}
+                        onExportClick={() => setExportOpen(true)}
+                    />
+                    <FilterPanel
+                        filterText={filterText}
+                        onFilterChange={setFilterText}
+                    />
+                    <ResultsTable
+                        records={records}
+                        isLoading={isLoading}
+                        onZoomToFeature={(geom) => model.zoomToFeature(geom)}
+                    />
+                    <ExportDialog
+                        open={exportOpen}
+                        onClose={() => setExportOpen(false)}
+                        onExport={handleExport}
+                    />
+                </div>
             </ErrorBoundary>
         </LayoutElement>
     );
 });
 
 export default InspectionDashboard;
+```
+
+##### Co-Located Coordinator Styles (`InspectionDashboard.css`)
+```css
+.InspectionDashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1rem;
+    background-color: var(--primaryBackground, #ffffff);
+    color: var(--primaryForeground, #212121);
+}
 ```
 
 ##### 2. Custom Business Hook (`hooks/useDashboardData.ts` < 80 lines)
@@ -1471,8 +1359,8 @@ Before submitting a VertiGIS component or extension for code review, verify adhe
 | | Zero hardcoded colors | No raw hex (`#...`), static RGB, or HSL strings in component files. |
 | | Color mixing | Opacity and surface blends use `alphaMix()` or `surfaceMix()` via CSS `color-mix()`. |
 | **Dual-Theme Safety** | Reactive theme awareness | Components needing theme state in React use `useIsDarkTheme()`. |
-| | Non-CSS renderers | Canvas, Plotly, or PDF export routines query `isDarkTheme()`. |
-| | Composite MUI controls | Sliders, switches, pickers, and paper elements are wrapped in `<VertiGisThemeProvider>`. |
+| | Host Theme & Namespaced CSS | Components inherit host theme natively via tokens; all CSS classes are strictly namespaced (e.g. `.ListHeader`). |
+| | UI Library Safety | Never import UI controls from `@vertigis/web/ui` (causes fatal UIContext crash outside shell). |
 | **Modularity & Architecture** | File size compliance | Every file is under 150 lines (target) and strictly below 250 lines (ceiling). |
 | | Directory blueprint | Complex components use `components/`, `hooks/`, `utils/`, and `types/` sub-directories. |
 | | Model / View isolation | MobX Model (`*Model.ts`) contains zero JSX, React hooks, or DOM references. |

@@ -803,8 +803,8 @@ In addition to MobX `observer()`, VertiGIS Studio Web provides dedicated React h
 import React from "react";
 import { LayoutElement, LayoutElementProperties } from "@vertigis/web/components";
 import { useWatchAndRerender } from "@vertigis/web/ui";
-import { Box, Typography, Button } from "@mui/material";
 import { MyWidgetModel } from "./MyWidgetModel";
+import "./MyWidget.css";
 
 export default function MyWidget(props: LayoutElementProperties<MyWidgetModel>) {
     const { model } = props;
@@ -815,16 +815,24 @@ export default function MyWidget(props: LayoutElementProperties<MyWidgetModel>) 
     return (
         <LayoutElement {...props}>
             {!model.hidden ? (
-                <Box sx={{ p: 2, backgroundColor: "var(--primaryBackground, #ffffff)" }}>
-                    <Typography variant="body1">Content is visible!</Typography>
-                    <Button variant="contained" onClick={() => (model.hidden = true)}>
+                <div className="MyWidget-container">
+                    <p className="MyWidget-text">Content is visible!</p>
+                    <button 
+                        type="button" 
+                        className="MyWidget-button" 
+                        onClick={() => (model.hidden = true)}
+                    >
                         Hide
-                    </Button>
-                </Box>
+                    </button>
+                </div>
             ) : (
-                <Button variant="outlined" onClick={() => (model.hidden = false)}>
+                <button 
+                    type="button" 
+                    className="MyWidget-button MyWidget-button--outlined" 
+                    onClick={() => (model.hidden = false)}
+                >
                     Show
-                </Button>
+                </button>
             )}
         </LayoutElement>
     );
