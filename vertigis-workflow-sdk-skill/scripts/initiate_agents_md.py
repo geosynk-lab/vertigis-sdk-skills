@@ -19,7 +19,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 
 > **Mandatory Agent Directive**: Whenever you make any change to or create any custom workflow activity or custom form element (Web or Mobile) in this repository, ALWAYS check and verify it against VertiGIS Workflow SDK standards (standard props wiring `enabled`/`visible`/`readOnly`, MobX/React patterns, MUI components with sx tokens, zero hardcoded colors, design token architecture, safe fallbacks, dual-theme adaptation, strict 150–250 line component modularity, state persistence in `setValue`/`setProperty`, and ErrorBoundary wrappers).
 
-## 1. Typography System
+## 1. Typography System & Shell Inheritance
 - **Strict ban on raw HTML text elements**: Never use raw `<span>`, `<p>`, `<h1>`-`<h6>`, or `<label>` tags.
 - **MUI Typography Component**: Always use `@mui/material` `<Typography variant="...">`:
   - `h6`: Form header, section titles, and top-level card titles.
@@ -31,16 +31,16 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
   - Secondary / muted text: `color: "var(--secondaryForeground, #666666)"`
   - Inactive / disabled text: `color: "var(--disabledForeground, #9e9e9e)"`
   - Validation error text: `color: "var(--alertRedForeground, #d32f2f)"`
-- **Font Family**: Use `fontFamily: "var(--defaultFont, sans-serif)"` (inherited automatically via MUI theme).
+- **Host Shell Font Inheritance (Zero Redundant `font-family`)**: Typography and font family are inherited natively from the host shell (`.vsw-app` / Workflow host)—NEVER inject redundant `font-family` styles. Using `<Typography>` completely eliminates bespoke text styling and deletes boilerplate font-size, line-height, and font-family declarations.
 - **Mobile & Field Form Readability**: Ensure minimum text sizing (at least 14px / `body2` on mobile screens) and comfortable line-height for readability in high-glare outdoor environments.
 
 ## 2. Color & Design Tokens Subsystem (Pure Theme Inheritance & Zero Color Injection)
-- **Zero Hardcoded Colors**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values for UI chrome, backgrounds, text, and borders.
-- **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`) to ensure resilient rendering in headless, disconnected, or preview environments.
+- **Zero Hardcoded Colors & Shapes**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values, and hardcoded corner radii (e.g. `4px`). Always reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
+- **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--borderRadius, 4px)`) to ensure resilient rendering in headless, disconnected, or preview environments.
 - **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisWorkflowMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
 - **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, signature pads, barcode viewfinders, PDF exports, SVG vector paths).
 - **Standardized Token Architecture**: Group all tokens under a `tokens/` directory:
-  - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, status, and touch tokens.
+  - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, status, touch, and unified shape tokens (`borderRadius`, `borderRadiusSm`, `borderRadiusLarge`, `borderRadiusLg`, `borderRadiusRound`, `borderRadiusPill`).
   - `tokens/typography.ts`: Typography hierarchy, font families, and weights.
   - `tokens/index.ts`: Central barrel export and `color-mix()` dynamic tinting utilities.
 - **Dynamic Dual-Theme Adaptation**:

@@ -324,12 +324,16 @@ export const UI_TOKENS = {
 
     // Geometry & Layout Spacing
     shape: {
-        /** Standard border radius for cards, inputs, and buttons */
+        /** Standard border radius for cards, inputs, buttons, and list items */
         borderRadius: "var(--borderRadius, 4px)",
         /** Small border radius for badges and micro-chips */
         borderRadiusSm: "var(--borderRadiusSm, 2px)",
-        /** Large border radius for modals and dialogs */
+        /** Large border radius for modals, dialogs, and panels */
+        borderRadiusLarge: "var(--borderRadiusLarge, 8px)",
+        /** Alias for borderRadiusLarge for template compatibility */
         borderRadiusLg: "var(--borderRadiusLg, 8px)",
+        /** Fully circular avatar or round button radius */
+        borderRadiusRound: "50%",
         /** Pill radius for status chips and round action buttons */
         borderRadiusPill: "9999px",
         /** Primary container elevation shadow */
@@ -353,6 +357,13 @@ export default UI_TOKENS;
 ---
 
 ### Typography Tokens (`tokens/typography.ts`)
+
+Typography tokens standardize font stacks, scale ratios, font weights, and line heights.
+
+#### Host Shell Inheritance & Boilerplate Deletion
+Typography is inherited natively from the host shell (`.vsw-app` / Workflow runner).
+- **Prohibited**: NEVER inject `font-family` overrides into form elements.
+- **MUI `<Typography>` Deletes Boilerplate**: Using `@mui/material` `<Typography variant="...">` completely eliminates the need for custom CSS classes for text (`.Item-title`, etc.) and automatically inherits host font stacks, line heights, and WCAG AA contrast.
 
 ```typescript
 /**

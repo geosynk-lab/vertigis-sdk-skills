@@ -329,12 +329,18 @@ export const UI_TOKENS = {
 
     // Geometry & Shape Tokens
     shape: {
-        /** Standard corner radius for buttons, input fields, and chips */
+        /** Standard corner radius for buttons, input fields, chips, and list items */
         borderRadius: "var(--borderRadius, 4px)",
+        /** Micro corner radius for small badges, tags, and inner items */
+        borderRadiusSm: "var(--borderRadiusSm, 2px)",
         /** Extended corner radius for cards, floating panels, and dialogs */
         borderRadiusLarge: "var(--borderRadiusLarge, 8px)",
-        /** Fully rounded pill or circular avatar radius */
+        /** Alias for borderRadiusLarge */
+        borderRadiusLg: "var(--borderRadiusLg, 8px)",
+        /** Fully rounded circular avatar or round button radius */
         borderRadiusRound: "50%",
+        /** Pill radius for status capsules and rounded badges */
+        borderRadiusPill: "9999px",
     },
 } as const;
 
@@ -345,7 +351,12 @@ export type UiTokens = typeof UI_TOKENS;
 
 ### 3. Typography Tokens (`src/tokens/typography.ts`)
 
-Typography tokens standardize font stacks, scale, line heights, and weights:
+Typography tokens standardize font stacks, scale, line heights, and weights across both VertiGIS Web components and Workflow form elements.
+
+#### Host Shell Inheritance & Zero Redundant CSS Declarations
+The host application shell (`.vsw-app`) strictly owns and injects the global font stack (`var(--defaultFont)`).
+- **Prohibited**: NEVER declare `font-family: var(--defaultFont);` on child component CSS classes (e.g. `.Item-title`, `.Item-caption`). It is inherited by default from the shell; repeating it creates CSS bloat and specificity noise.
+- **MUI `<Typography>` Deletes Boilerplate**: Prefer `@mui/material` `<Typography variant="...">` (`caption`, `body2`, `subtitle2`, etc.) in JSX. Doing so automatically adopts shell font inheritance, line-height, and font scaling without writing a single line of custom CSS for text.
 
 ```typescript
 /**
@@ -354,27 +365,32 @@ Typography tokens standardize font stacks, scale, line heights, and weights:
  */
 
 export const TYPOGRAPHY_TOKENS = {
-    // Font Family Stacks
+    // Font Family Stacks (Inherited from host shell by default)
     fontFamily: {
-        /** Standard user interface typography stack */
+        /** Standard user interface typography stack (inherited) */
         default: 'var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)',
         /** Monospace stack for coordinates, code snippets, and JSON payloads */
         monospace: 'var(--codeFont, "Roboto Mono", "Courier New", monospace)',
     },
 
-    // Modular Font Scale (Rem-based)
+    // Modular Font Scale (Rem-based) with MUI Variant & T-Shirt Aliases
     fontSize: {
-        /** 12px - Captions, overlines, legal copy, and micro-badges */
+        // Standard MUI variants
+        caption: "0.75rem",
+        body2: "0.875rem",
+        body1: "1rem",
+        subtitle2: "0.875rem",
+        subtitle1: "1.25rem",
+        h6: "1.25rem",
+        h5: "1.5rem",
+        overline: "0.625rem",
+
+        // T-shirt size aliases
         xs: "0.75rem",
-        /** 14px - Body2, compact table cells, helper tooltips */
         sm: "0.875rem",
-        /** 16px - Base body1, standard inputs, buttons */
         base: "1rem",
-        /** 20px - Subtitle1, panel titles, section headers */
         lg: "1.25rem",
-        /** 24px - H5, widget main titles */
         xl: "1.5rem",
-        /** 32px - H4, primary dashboard KPIs */
         xxl: "2rem",
     },
 
@@ -384,6 +400,8 @@ export const TYPOGRAPHY_TOKENS = {
         regular: 400,
         /** Form labels, table headers, emphasized buttons */
         medium: 500,
+        /** Headers, card titles, active tab states */
+        semibold: 600,
         /** Major headers, metric figures, alert callouts */
         bold: 700,
     },
