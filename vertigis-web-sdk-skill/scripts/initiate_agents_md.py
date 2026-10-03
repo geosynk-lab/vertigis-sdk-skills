@@ -65,18 +65,53 @@ DIRECTIVES_BODY = """# VertiGIS Studio Web SDK Development Directives
   - Extract event listeners, timers, and data operations into custom hooks.
   - Extract data formatting and business logic into pure, testable utility functions.
 
-## 4. Component Architecture & Lifecycle
+## 4. Component Architecture & Container Shell Contracts
 - **`<LayoutElement {...props}>` Root**: Every React component view MUST wrap all JSX within `<LayoutElement {...props}>` from `@vertigis/web/components` for layout slotting and Designer support.
 - **MobX `observer()`**: Wrap all React views that read model observables with `observer()` from `mobx-react-lite`.
 - **`<ErrorBoundary>` Wrapping**: Wrap custom widget contents in an `<ErrorBoundary>` component to isolate runtime faults and protect host application stability.
 - **Symmetric Lifecycle Sequencing**: In `_onInitialize()`, ALWAYS call `await super._onInitialize()` FIRST before setting up component resources. In `_onDestroy()`, ALWAYS clean up child subscriptions, intervals, and map layers FIRST, and invoke `await super._onDestroy()` LAST.
 - **Strict Ban on Custom `_handles` Property**: NEVER declare a property named `_handles` (e.g., `private _handles = []`). Base `InitializableBase` / `HandlesMixin` initializes `this._handles` as an `@arcgis/core/core/Handles` instance. Declaring `_handles` in derived classes clobbers the base instance under ES2022 class field semantics, causing `TypeError: this._handles.destroy is not a function` during Designer unmount or deployment packaging. Use domain-specific names (e.g., `_eventHandles`, `_sketchHandles`, `_disposables`) or use inherited `this._handles.add(...)`.
+- **Host Container Shell Contracts**:
+  - **Tabs (`<tab-container>` / `<tabs>`)**: NEVER return `<LayoutElement style={{ display: "none" }} />` or an empty placeholder when `props.active === false`. Inactive tabs receive `active="false"`; the host tab container handles hiding and tab switching. Hiding the component internally leaves the tab blank white on click!
+  - **Panels vs Bare Split Components**: In a `<panel>`, manage visibility via `ui.activate`/`ui.deactivate` on the **panel layout ID**. Bare in a `<split>`, manage visibility internally and invoke `ui.activate`/`ui.deactivate` on the **component ID**.
+  - **Dialogs & Full-Height Stretches**: Custom dialog views MUST use `<LayoutElement {...props} stretch style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>`. STRICT BAN on injecting `<GlobalStyles !important>` targeting host dialog chrome.
 
-## 5. Web Designer Settings Schema Protocol
+## 5. Web Designer Settings Schema Protocol & XML Attribute Lifecycle
 When exposing customizable component properties to the VertiGIS Studio Web Designer inspector panel:
 - **Schema Declaration (`getLayoutDesignerSettingsSchema`)**: Return a `SettingsSchema` declaring setting fields (`id`, `type` such as `text`, `number`, `checkbox`, `select`, `displayName`, `description`).
-- **Current Value Extraction (`getLayoutDesignerSettings`)**: Read XML attributes from layout node (`args.node.attributes.get(...)`) and map them to the Designer settings form state.
-- **Persisting Changes (`applyLayoutDesignerSettings`)**: Write updated attributes back to `args.node.attributes.set(...)` and propagate configuration changes to the live model via `model.updateConfig(...)`."""
+- **Current Value Extraction (`getLayoutDesignerSettings`)**: Read XML attributes from layout node (`args.node.attributes.get(...)`) and map them to the Designer settings form state. Support both kebab-case (`telemetry-layout-id`) and camelCase (`telemetryLayoutId`).
+- **Persisting Changes (`applyLayoutDesignerSettings`)**:
+  - **Safe Trimming & Explicit Attribute Deletion**: NEVER write empty strings (`node.attributes.set(key, "")`). Writing empty strings creates sticky XML attributes that resurrect default values on reload. Always trim string inputs (`safeTrim`); if a value is present, call `node.attributes.set(kebabKey, val)`; if empty or cleared, call `node.attributes.delete(kebabKey)`.
+  - **Live Model Synchronization**: Propagate configuration changes into the active model instance via `model.updateConfig(...)`.
+- **Lifecycle Initialization from XML Node**: In `_onInitialize()`, component models must read `(this as any).node?.attributes` to guarantee that attributes declared in `layout.xml` are loaded immediately on startup even before the designer inspector is opened.
+
+## 6. Feature Actions, Commands, & Arcade Scripting Protocol
+- **Layer Filtering via `arcade.run`**: When configuring feature actions in Web Designer to trigger custom commands, always wrap the execution filter in `arcade.run` with a robust `canExecuteScript` using `HasKey($feature, 'Field')`:
+  ```json
+  [
+    {
+      "name": "arcade.run",
+      "arguments": {
+        "canExecuteScript": "(HasKey($feature, 'GFID') || HasKey($feature, 'gfid'))"
+      }
+    },
+    "your-command.display"
+  ]
+  ```
+- **Command Execution Contract**: Custom commands registered via `registerCommandHandler` must gracefully accept either an ArcGIS Graphic/Feature object (`target.attributes`) or a plain parameter map (`target.id`).
+
+## 7. Gradual Verification Protocol & Mandatory Micro-Gates
+Never treat verification as a single end-of-task formality. Enforce the **4-Tier Gradual Verification Gate** after every code edit:
+1. **Fast Typecheck**: `tsc --noEmit` (clean types).
+2. **Unit & Contract Tests**: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase).
+3. **Dead Code & Hygiene Gate**: `knip` (zero unused exports, dead files, or orphan CSS).
+4. **Production Build**: `npm run build` or `pnpm run build` (clean compilation).
+- **2-Strike Halt Gate**: If a fix fails verification twice on the same step, STOP. Report what was tried, what failed, and ask for guidance.
+
+## 8. Ponytail Code Minimization & Zero-Garbage Invariant
+- **Native Platform & MUI First**: Use native MUI controls (`IconButton`, `Typography`, `Box`, `Alert`) with VertiGIS theme tokens. NEVER write 30+ lines of custom CSS with `!important` to replicate native MUI buttons or toggles.
+- **Deletion-First Refactoring**: When replacing an implementation or abandoning an API, delete the old implementation and all unused helper files FIRST. Verify with `knip` before authoring new code.
+- **Zero Untracked Garbage**: Never leave experimental scrapers, orphan test fixtures, or dead wrappers in the codebase."""
 
 VERTIGIS_DIRECTIVES = f"{START_MARKER}\n{DIRECTIVES_BODY}\n{END_MARKER}"
 

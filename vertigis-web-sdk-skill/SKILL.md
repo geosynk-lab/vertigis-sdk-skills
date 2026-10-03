@@ -36,12 +36,44 @@ You MUST adhere to the following rules without exception:
    - **Strict Class Namespacing (Host Shell Safety)**: Because the SDK Webpack pipeline compiles CSS via `style-loader` without CSS Modules hashing, all classes in `*.css` are injected globally into the host `<head>`. All classes MUST be strictly namespaced with the component name or BEM (e.g. `.ListHeader`, `.ListHeader-title` or `.list-header__title`). Strictly BANNED: generic classes like `.header`, `.title`, `.item`, `.button`, `.card`, `.active`.
    - **Minimal Style Injection & Style Hierarchy**: (1) Co-located `ComponentName.css` for static layouts, cards, hover states, and structural chrome (using `var(--borderRadius, 4px)` and zero redundant `font-family`). (2) Native `style={{ ... }}` ONLY for purely dynamic runtime calculations (e.g. calculated widths or coordinates). (3) Strict ban on scattering loose, repetitive `sx={{ ... }}` objects across markup. Rely on parent inheritance and tokens.
 4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
-5. **Exposing Properties to Designer (Settings Schema Protocol)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**: (1) `getLayoutDesignerSettingsSchema` declaring field IDs, types (`text`, `number`, `checkbox`, `select`), display names, and tooltips, (2) `getLayoutDesignerSettings` reading XML attributes via `args.node.attributes.get(...)`, and (3) `applyLayoutDesignerSettings` persisting values back via `args.node.attributes.set(...)` and synchronizing the live model via `model.updateConfig(...)`.
-6. **LayoutElement Wrapper**: Every component view MUST wrap its content inside `<LayoutElement {...props}>` (imported from `@vertigis/web/components`) for layout slotting and Designer support.
+5. **Exposing Properties to Designer (Settings Schema Protocol & Attribute Lifecycle)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**:
+   - **Safe Trimming & Explicit Attribute Deletion**: When persisting settings in `applyLayoutDesignerSettings`, NEVER write empty strings (`node.attributes.set(key, "")`). Writing empty strings creates sticky XML attributes that resurrect default values on reload. Always trim string inputs (`safeTrim`); if a value is present, call `node.attributes.set(kebabKey, val)`; if empty or cleared, call `node.attributes.delete(kebabKey)`.
+   - **Three-Way Casing Synchronization**: XML attributes in `layout.xml` are strictly **kebab-case** (`telemetry-layout-id`, `layout-id`). Component model properties and React props are **camelCase** (`telemetryLayoutId`, `layoutId`). The component props (`LayoutElementProperties`) MUST declare BOTH kebab-case and camelCase forms, and `getLayoutDesignerSettings` must inspect both (`attr("telemetry-layout-id") ?? attr("telemetryLayoutId")`).
+   - **Lifecycle Initialization from XML Node**: In `_onInitialize()`, component models must read `(this as any).node?.attributes` to guarantee that attributes declared in `layout.xml` are loaded immediately on startup even before the designer inspector is opened.
+6. **LayoutElement Wrapper & Host Layout Shell Hierarchy**:
+   - Every component view MUST wrap its content inside `<LayoutElement {...props}>` (imported from `@vertigis/web/components`) for layout slotting and Designer support.
+   - **Strict Ban on Hiding via `props.active === false`**: Never return `<LayoutElement style={{ display: "none" }} />` or an empty placeholder when `props.active === false`. In `<tab-container>` and `<tabs>`, background tabs receive `active="false"`. Hiding the component makes the tab panel render blank white when selected by the user. Let the host tab container manage DOM visibility.
+   - **Panels vs Bare Split Components**: Inside a `<panel>`, manage activation/closing via `ui.activate` and `ui.deactivate` targeting the **panel's layout ID**. When bare inside a `<split>`, manage visibility internally and invoke `ui.activate`/`ui.deactivate` on the **component ID**.
+   - **Dialogs & Full-Height Stretches**: Custom dialog views MUST use `<LayoutElement {...props} stretch style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>`. STRICT BAN on injecting `<GlobalStyles>` targeting `div[role="dialog"]` or overriding host `.MuiDialogContent-root` with `!important`. Dialog dimensions are controlled declaratively in `app.json` or `layout.xml`.
 7. **MobX Observer**: Every React component that reads model properties MUST be wrapped with `observer()` from `mobx-react-lite`.
 8. **ArcGIS Import Rules**: Use default imports for class modules (`import Graphic from "@arcgis/core/Graphic"`). Use star imports for utility/function modules to avoid AMD errors (`import * as projection from "@arcgis/core/geometry/projection"`).
 9. **Enterprise Reliability & Theme Safety**: Wrap custom React widgets in `ErrorBoundary` components to prevent layout crashes. All subscriptions, intervals, and MobX reactions initialized in `_onInitialize()` MUST be cleanly disposed in `_onDestroy()`. Wrap Workflow Activity `execute` blocks in `try/catch` and throw structured errors. Add `aria-label` to interactive MUI components. Ensure theme safety across dynamic light/dark switches.
 10. **Lifecycle Contract & Reserved Property Protection (`_handles` Safety)**: Subclasses of `ComponentModelBase` and `ModelBase` MUST strictly adhere to the symmetric lifecycle contract: (1) In `_onInitialize()`, ALWAYS invoke `await super._onInitialize()` **first** before initializing component-specific resources, subscriptions, or layers. (2) In `_onDestroy()`, ALWAYS clean up component-specific resources, subscriptions, event listeners, sketch view models, and map graphics **first**, and invoke `await super._onDestroy()` **last** (symmetric teardown). (3) **Strict ban on declaring a custom `_handles` field**: Ancestor `InitializableBase` incorporates `HandlesMixin` (`@vertigis/arcgis-extensions/support/HandlesMixin.js`), which instantiates `this._handles` as an `@arcgis/core/core/Handles` instance and calls `this._handles.destroy()` on disposal. Under ES2022+ class field semantics (`useDefineForClassFields: true`), declaring a custom field named `_handles` (e.g., `private _handles: any[] = []`) silently overwrites the parent's `Handles` instance with a plain Array. When VertiGIS Studio Web Designer tears down models during app deployment or publishing packaging, `model.destroy()` triggers `super.destroy()`, crashing with `TypeError: this._handles.destroy is not a function`. Custom handle collections MUST use domain-specific names (e.g., `_eventHandles`, `_sketchHandles`, `_disposables`) or cleanly register into the inherited base `this._handles.add(...)`.
+11. **Gradual Verification Protocol & Mandatory Micro-Gates**:
+    - Never treat verification as a single end-of-task formality. Enforce the **4-Tier Gradual Verification Gate** after every code edit:
+      1. *Fast Typecheck*: `tsc --noEmit` (clean types).
+      2. *Unit & Contract Tests*: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase).
+      3. *Dead Code & Hygiene Gate*: `knip` (zero unused exports, dead files, or orphan CSS).
+      4. *Production Build*: `npm run build` or `pnpm run build` (clean compilation).
+    - **2-Strike Halt Gate**: If a fix fails verification twice on the same step, STOP. Report what was tried, what failed, and ask for guidance.
+12. **Ponytail Code Minimization & Zero-Garbage Invariant**:
+    - **Native Platform & MUI First**: Use native MUI controls (`IconButton`, `Typography`, `Box`, `Alert`) with VertiGIS theme tokens. NEVER write 30+ lines of custom CSS with `!important` to replicate native MUI buttons or toggles.
+    - **Deletion-First Refactoring**: When replacing an implementation or abandoning an API, delete the old implementation and all unused helper files FIRST. Verify with `knip` before authoring new code.
+    - **Zero Untracked Garbage**: Never leave experimental scrapers, orphan test fixtures, or dead wrappers in the codebase.
+13. **Feature Actions, Commands, & Arcade Scripting Protocol**:
+    - **Layer Filtering via `arcade.run`**: When configuring feature actions in Web Designer to trigger custom commands, always wrap the execution filter in `arcade.run` with a robust `canExecuteScript` using `HasKey($feature, 'Field')`:
+      ```json
+      [
+        {
+          "name": "arcade.run",
+          "arguments": {
+            "canExecuteScript": "(HasKey($feature, 'GFID') || HasKey($feature, 'gfid'))"
+          }
+        },
+        "your-command.display"
+      ]
+      ```
+    - **Command Execution Contract**: Custom commands registered via `registerCommandHandler` must gracefully accept either an ArcGIS Graphic/Feature object (`target.attributes`) or a plain parameter map (`target.id`).
 
 ## 4. Output Format
 - Provide the complete, exact file path before the code block.
@@ -326,27 +358,50 @@ export default function (registry: LibraryRegistry): void {
             args: GetLayoutDesignerSettingsArgs
         ): Promise<CustomWidgetLayoutSettings> => {
             const baseSettings = await getLayoutDesignerSettings(args);
+            const model = args.node.model as CustomWidgetModel | undefined;
+            const attr = (k: string) => args.node.attributes.get(k);
+
             return {
                 ...baseSettings,
-                title: (args.node.attributes.get("title") as string) || "Default Title",
-                refreshInterval: Number(args.node.attributes.get("refresh-interval")) || 30,
-                showBorder: args.node.attributes.get("show-border") === "true",
+                title: String(attr("title") ?? model?.title ?? "Default Title"),
+                refreshInterval: Number(attr("refresh-interval") ?? model?.refreshInterval ?? 30),
+                showBorder: attr("show-border") !== undefined ? attr("show-border") === "true" : Boolean(model?.showBorder),
             };
         },
 
-        // 3. Persisting Changes: Writes back attributes and updates live model instance
+        // 3. Persisting Changes: Writes back attributes, deletes empty ones, and updates live model
         applyLayoutDesignerSettings: async (
             args: ApplyLayoutDesignerSettingsArgs<CustomWidgetLayoutSettings>
         ): Promise<void> => {
             await applyLayoutDesignerSettings(args);
             const { node, settings } = args;
 
+            const safeTrim = (val: unknown): string | undefined => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim();
+                    return trimmed.length > 0 ? trimmed : undefined;
+                }
+                return undefined;
+            };
+
+            // Rule 5: Explicitly DELETE cleared attributes to avoid sticky defaults
             if (settings.title !== undefined) {
-                node.attributes.set("title", settings.title);
+                const val = safeTrim(settings.title);
+                if (val) {
+                    node.attributes.set("title", val);
+                } else {
+                    node.attributes.delete("title");
+                }
             }
+
             if (settings.refreshInterval !== undefined) {
-                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                if (settings.refreshInterval > 0) {
+                    node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                } else {
+                    node.attributes.delete("refresh-interval");
+                }
             }
+
             if (settings.showBorder !== undefined) {
                 node.attributes.set("show-border", String(settings.showBorder));
             }
@@ -355,7 +410,7 @@ export default function (registry: LibraryRegistry): void {
             const model = node.model as CustomWidgetModel | undefined;
             if (model && typeof model.updateConfig === "function") {
                 model.updateConfig({
-                    title: settings.title,
+                    title: safeTrim(settings.title),
                     refreshInterval: settings.refreshInterval,
                     showBorder: settings.showBorder,
                 });

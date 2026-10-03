@@ -383,28 +383,156 @@ export default function (registry: LibraryRegistry): void {
             await applyLayoutDesignerSettings(args);
             const { node, settings } = args;
 
+            const safeTrim = (val: unknown): string | undefined => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim();
+                    return trimmed.length > 0 ? trimmed : undefined;
+                }
+                return undefined;
+            };
+
+            // Rule 5: Explicitly DELETE cleared attributes to prevent sticky fallbacks
             if (settings.title !== undefined) {
-                node.attributes.set("title", settings.title);
+                const val = safeTrim(settings.title);
+                if (val) {
+                    node.attributes.set("title", val);
+                } else {
+                    node.attributes.delete("title");
+                }
             }
             if (settings.refreshInterval !== undefined) {
-                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                if (settings.refreshInterval > 0) {
+                    node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                } else {
+                    node.attributes.delete("refresh-interval");
+                }
             }
             if (settings.showBorder !== undefined) {
                 node.attributes.set("show-border", String(settings.showBorder));
             }
             if (settings.displayMode !== undefined) {
-                node.attributes.set("display-mode", settings.displayMode);
+                const val = safeTrim(settings.displayMode);
+                if (val) {
+                    node.attributes.set("display-mode", val);
+                } else {
+                    node.attributes.delete("display-mode");
+                }
             }
 
             if (node.model && typeof (node.model as any).updateConfig === "function") {
                 (node.model as any).updateConfig({
-                    title: settings.title,
+                    title: safeTrim(settings.title),
                     refreshInterval: settings.refreshInterval,
                     showBorder: settings.showBorder,
-                    displayMode: settings.displayMode,
+                    displayMode: safeTrim(settings.displayMode),
                 });
             }
         },
     });
 }
 ```
+
+---
+
+## 10. Web Designer Settings Protocol & XML Attribute Lifecycle
+
+### A. The 3-Way Parameter Pipeline
+In VertiGIS Studio Web Designer, component configuration traverses three distinct layers:
+```
+  [layout.xml / XML Attributes] (kebab-case: layout-id, telemetry-layout-id)
+               │
+               ▼
+  [Designer Settings Protocol] (args.node.attributes.get / set / delete)
+               │
+               ▼
+  [React View Props & MobX Model] (camelCase: layoutId, telemetryLayoutId, model.updateConfig)
+```
+
+### B. Safe String Trimming & Explicit Deletion
+When a user clears an input field in the Designer inspector:
+- Designer passes an empty string `""` in `settings[field]`.
+- Calling `node.attributes.set(key, "")` writes `<custom:my-component my-prop="" />` into `layout.xml`.
+- When reloaded, `args.node.attributes.get("my-prop")` returns `""` (falsy), causing the fallback `"" || "Default Value"` to evaluate to `"Default Value"`. The cleared value appears to resurrect.
+- **Invariant**: You MUST always trim strings with `safeTrim` and call `node.attributes.delete(key)` when the value is cleared or empty.
+
+### C. Three-Way Casing Synchronization
+- `layout.xml` attributes are **kebab-case** (`panel-sidebar`, `layout-id`).
+- TypeScript model properties and React props are **camelCase** (`panelSidebar`, `layoutId`).
+- `LayoutElementProperties<TModel>` MUST declare both kebab-case and camelCase options:
+  ```typescript
+  export interface MyWidgetProps extends LayoutElementProperties<MyWidgetModel> {
+      layoutId?: string;
+      "layout-id"?: string;
+      panelSidebar?: string;
+      "panel-sidebar"?: string;
+  }
+  ```
+- In `getLayoutDesignerSettings`, extract using both:
+  ```typescript
+  const rawId = attr("layout-id") ?? attr("layoutId") ?? attr("panel-sidebar");
+  ```
+
+### D. Lifecycle Initialization from XML Node
+When VertiGIS Web initializes a component before Designer settings have ever been opened, the model's `_onInitialize()` lifecycle hook MUST inspect `node.attributes`:
+```typescript
+protected override async _onInitialize(): Promise<void> {
+    await super._onInitialize();
+
+    const node = (this as any).node;
+    if (node?.attributes) {
+        const attr = (k: string) => node.attributes.get(k);
+        const layoutId = attr("layout-id") ?? attr("layoutId");
+        if (layoutId) {
+            this.layoutId = String(layoutId);
+        }
+    }
+}
+```
+
+---
+
+## 11. Host Layout Shell Hierarchy & Container Contracts
+
+Custom VertiGIS Web components are guest extensions hosted inside `.vsw-app`. Each container type imposes specific layout contracts:
+
+| Container Shell | Intended Purpose | Sizing Contract | Activation / Toggle Behavior |
+| :--- | :--- | :--- | :--- |
+| **`<tab-container>` / `<tabs>`** | Grouping widgets into selectable tabs | `grow="1"` or `height="100%"` | **NEVER return `<LayoutElement style={{ display: "none" }} />` on `props.active === false`.** Inactive tabs receive `active="false"`; the host tab container handles hiding and tab switching. Hiding the component internally leaves the tab blank white on click! |
+| **`<panel>`** | Collapsible or docked sidebar panels | `width="26"`, `grow="1"` | Has native panel headers and close buttons. Toggle visibility via `ui.activate` and `ui.deactivate` on the **panel layout ID** (`layout-id="panel-sidebar"`). |
+| **`<split>`** | Side-by-side or stacked partitioned view | `resizable="true"`, `grow="72"` | Split children must have explicit `width` or `grow`, plus `minHeight: 0`, `minWidth: 0`. When bare inside a split, toggle visibility internally and invoke `ui.activate`/`ui.deactivate` on the **component ID**. |
+| **`<dialog>`** | Modal or floating popups | Defined in `app.json` or layout | Custom dialog components MUST render `<LayoutElement {...props} stretch style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>`. **STRICT BAN on `<GlobalStyles !important>` targeting host dialog chrome.** |
+
+---
+
+## 12. Feature Actions, Commands, & Arcade Scripting Protocol
+
+### A. Layer Filtering in Web Designer (`arcade.run`)
+When binding a custom command (e.g. `propeller360.display`) to map feature actions or context menus in Web Designer, never leave execution unbounded. Always use `arcade.run` with a condition script to restrict execution to valid layer schemas:
+
+```json
+[
+  {
+    "name": "arcade.run",
+    "arguments": {
+      "canExecuteScript": "(HasKey($feature, 'GFID') || HasKey($feature, 'gfid')) && (HasKey($feature, 'gis_name') || HasKey($feature, 'filename') || HasKey($feature, 'datetimeoriginal') || HasKey($feature, 'tc_id'))"
+    }
+  },
+  "propeller360.display"
+]
+```
+
+### B. Command Execution Contract
+In `registerCommandHandler`, handle both ArcGIS Features and parameter payloads gracefully:
+```typescript
+registry.registerCommandHandler({
+    name: "my-extension.display",
+    execute: async (target: any) => {
+        // Handle direct Graphic / Feature object
+        const attributes = target?.attributes ?? target?._originalMap ?? target;
+        // Handle ID or plain argument map
+        const objectId = attributes?.OBJECTID ?? attributes?.objectid ?? target?.id;
+        // Proceed with command logic
+    }
+});
+```
+

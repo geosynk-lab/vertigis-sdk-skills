@@ -123,8 +123,6 @@ import {
     LayoutElement,
     LayoutElementProperties,
 } from "@vertigis/web/components";
-import { useUIContext, useService } from "@vertigis/web/ui";
-import { I18nService } from "@vertigis/web/i18n";
 import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { MyWidgetModel } from "./MyWidgetModel";
 
@@ -134,23 +132,19 @@ export interface MyWidgetProps extends LayoutElementProperties<MyWidgetModel> {
      * @description This property will automatically show up in the Web Designer.
      */
     customConfigParam?: string;
+    "custom-config-param"?: string;
     refreshInterval?: number;
+    "refresh-interval"?: number;
     showBorder?: boolean;
+    "show-border"?: boolean;
 }
 
 const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactElement {
-    const { model, customConfigParam = "Default", refreshInterval = 30, showBorder = false } = props;
-
-    // Direct access to UI Context commands & services in React views
-    const { commands } = useUIContext();
-    const i18n = useService<I18nService>("i18n");
+    const { model, showBorder = false } = props;
+    const customConfigParam = props.customConfigParam ?? props["custom-config-param"] ?? "Default";
+    const refreshInterval = props.refreshInterval ?? props["refresh-interval"] ?? 30;
 
     const handleAction = async () => {
-        await commands.ui.displayNotification.execute({
-            title: i18n?.translate("widget-title") || "Action",
-            message: `Count incremented to ${model.count + 1}`,
-            status: "info"
-        });
         model.increment();
     };
 
@@ -165,12 +159,11 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                         border: showBorder ? "1px solid var(--primaryBorder, #e0e0e0)" : "none",
                     }}
                 >
-                    {/* Widget Title with MUI Typography */}
+                    {/* Widget Title with MUI Typography (Zero redundant font-family) */}
                     <Typography
                         variant="h6"
                         sx={{
                             color: "var(--primaryForeground, #212121)",
-                            fontFamily: 'var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)',
                             mb: 0.5,
                         }}
                     >
@@ -204,7 +197,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
                                 sx={{
                                     px: 1,
                                     py: 0.25,
-                                    borderRadius: "4px",
+                                    borderRadius: "var(--borderRadiusSm, 2px)",
                                     backgroundColor: "var(--alertGreenBackground, #edf7ed)",
                                     color: "var(--alertGreenForeground, #2e7d32)",
                                     fontWeight: "bold",
@@ -380,7 +373,7 @@ export default function (registry: LibraryRegistry): void {
             };
         },
 
-        // 3. Persisting Designer Changes
+        // 3. Persisting Designer Changes (Safe trimming and explicit attribute deletion)
         applyLayoutDesignerSettings: async (
             args: ApplyLayoutDesignerSettingsArgs<MyWidgetConfig>
         ): Promise<void> => {
@@ -388,13 +381,32 @@ export default function (registry: LibraryRegistry): void {
             await applyLayoutDesignerSettings(args);
             const { node, settings } = args;
 
-            // Write back updated attributes to the layout XML node
+            const safeTrim = (val: unknown): string | undefined => {
+                if (typeof val === "string") {
+                    const trimmed = val.trim();
+                    return trimmed.length > 0 ? trimmed : undefined;
+                }
+                return undefined;
+            };
+
+            // Rule 5: Explicitly DELETE cleared attributes to prevent sticky fallbacks
             if (settings.customConfigParam !== undefined) {
-                node.attributes.set("custom-config-param", settings.customConfigParam);
+                const val = safeTrim(settings.customConfigParam);
+                if (val) {
+                    node.attributes.set("custom-config-param", val);
+                } else {
+                    node.attributes.delete("custom-config-param");
+                }
             }
+
             if (settings.refreshInterval !== undefined) {
-                node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                if (settings.refreshInterval > 0) {
+                    node.attributes.set("refresh-interval", String(settings.refreshInterval));
+                } else {
+                    node.attributes.delete("refresh-interval");
+                }
             }
+
             if (settings.showBorder !== undefined) {
                 node.attributes.set("show-border", String(settings.showBorder));
             }
@@ -403,7 +415,7 @@ export default function (registry: LibraryRegistry): void {
             const model = node.model as MyWidgetModel | undefined;
             if (model && typeof model.updateConfig === "function") {
                 model.updateConfig({
-                    customConfigParam: settings.customConfigParam,
+                    customConfigParam: safeTrim(settings.customConfigParam),
                     refreshInterval: settings.refreshInterval,
                     showBorder: settings.showBorder,
                 });

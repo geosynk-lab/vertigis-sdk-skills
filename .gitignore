@@ -11,3 +11,5 @@ build/
 .serena/
 *.log
 .tgrep/
+.agents/
+ORIGINAL_REQUEST.md
