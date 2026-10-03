@@ -57,12 +57,13 @@ All text rendered inside custom form elements must use `@mui/material` `<Typogra
    - Replace headings (`<h1>`-`<h6>`) with `<Typography variant="h6">` or `<Typography variant="subtitle1">`.
 2. **Font Family Token**:
    - Always reference `fontFamily: "var(--defaultFont, sans-serif)"` (inherited automatically via MUI theme).
-3. **Semantic Text Color Tokens**:
-   - Always pair Typography variants with semantic foreground tokens via `sx`:
-     - Primary text: `sx={{ color: "var(--primaryForeground, #212121)" }}`
-     - Secondary / Muted / Helper text: `sx={{ color: "var(--secondaryForeground, #666666)" }}`
-     - Disabled / Inactive text: `sx={{ color: "var(--disabledForeground, #9e9e9e)" }}`
-     - Validation error text: `sx={{ color: "var(--alertRedForeground, #d32f2f)" }}`
+3. **Semantic Typography Palette Props**:
+   - Leverage MUI's built-in semantic palette props on `<Typography>` rather than micro-injecting `sx={{ color: ... }}`:
+     - Secondary / Muted / Helper text: `<Typography variant="caption" color="text.secondary">` or `<Typography variant="body2" color="text.secondary">`
+     - Primary form text: `<Typography color="text.primary">` (or default)
+     - Inverted / Dark surface text: `<Typography color="inherit">`
+     - Validation error text: `<Typography color="error">` or status token
+   - NEVER write bespoke inline `sx={{ color: ... }}` solely to set secondary or helper text colors. Standard `<Typography color="text.secondary">` automatically adapts to light and dark themes.
 4. **Mobile & Outdoor Field Readability**:
    - Field crews use Workflow forms outdoors on rugged tablets and smartphones in direct sunlight.
    - Set a minimum font size of at least **14px** (`body2` or larger) for readable field instructions and input labels on mobile screens.
@@ -759,6 +760,33 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                     },
                 },
             },
+            MuiCheckbox: {
+                defaultProps: { size: "small" },
+                styleOverrides: {
+                    root: {
+                        "&.Mui-checked": {
+                            color: UI_TOKENS.accent.primary,
+                        },
+                    },
+                },
+            },
+            MuiRadio: {
+                defaultProps: { size: "small" },
+                styleOverrides: {
+                    root: {
+                        "&.Mui-checked": {
+                            color: UI_TOKENS.accent.primary,
+                        },
+                    },
+                },
+            },
+            MuiTypography: {
+                styleOverrides: {
+                    root: {
+                        color: "inherit",
+                    },
+                },
+            },
         },
     });
 }
@@ -776,6 +804,39 @@ export function VertiGisThemeProvider({ children, isDark = false }: VertiGisThem
     return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
 }
 ```
+
+### MUI v7 Modern Conventions & Host Shell Safety (Form Elements)
+
+To ensure form elements run safely across VertiGIS Web and Mobile hosts:
+
+1. **Strict Ban on `<CssBaseline />`**: Never mount `<CssBaseline />` inside custom form elements or under `VertiGisThemeProvider`. Doing so injects global CSS resets (`* { box-sizing: border-box; }`, `body { margin: 0; }`, font resets) that collide with `.vsw-app` or Mobile containers, corrupt Esri map canvas viewports, and cause host layout regressions.
+2. **Standardized `slotProps` API**: MUI v7 deprecated nested component props (`inputProps`, `InputProps`, `BackdropProps`, `PaperProps`). Always use standardized `slotProps`:
+   ```tsx
+   // ✅ Standardized MUI v7 slotProps:
+   <TextField slotProps={{ input: { readOnly: !enabled || readOnly } }} ... />
+   <DatePicker slotProps={{ textField: { size: "small" } }} ... />
+   ```
+3. **Semantic Palette Props over Custom `sx`**: Leverage built-in typography palette awareness rather than micro-injecting `sx={{ color: ... }}`:
+   ```tsx
+   // ✅ Automatically flips between light/dark secondary colors:
+   <Typography variant="caption" color="text.secondary">Validation hint or instruction</Typography>
+   ```
+4. **Type-Safe Style Dictionaries (`SxProps<Theme>`)**: When custom MUI styles are needed for form element layout, isolate them into typed dictionaries at the top of the file rather than scattering inline `sx` objects across JSX:
+   ```typescript
+   import type { SxProps, Theme } from "@mui/material/styles";
+
+   const styles: Record<string, SxProps<Theme>> = {
+       fieldContainer: {
+           display: "flex",
+           flexDirection: "column",
+           gap: 1.5,
+           p: 2,
+           borderRadius: "var(--borderRadius, 4px)",
+           backgroundColor: "var(--primaryBackground, #ffffff)",
+       },
+   };
+   ```
+5. **Top-Level Package Exports Only**: Always import directly from package roots (`import { Box, Typography } from "@mui/material"`; `import { createTheme, ThemeProvider } from "@mui/material/styles"`). Deep imports (e.g. `@mui/material/styles/createTheme`) are deprecated in MUI v7 and break under modern bundlers.
 
 ---
 

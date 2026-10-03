@@ -817,6 +817,35 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
 ```
 **The Fix**: Keep `palette.mode: isDark ? "dark" : "light"` clean, and attach CSS custom properties to component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent)" } } } }`).
 
+##### MUI v7 Modern Conventions & Host Shell Safety
+1. **Strict Ban on `<CssBaseline />`**: Never mount `<CssBaseline />` inside custom extensions or under `VertiGisThemeProvider`. Doing so injects global CSS resets (`* { box-sizing: border-box; }`, `body { margin: 0; }`, font resets) that collide with `.vsw-app`, break Esri map canvas pan/zoom calculations, and cause host layout regressions.
+2. **Standardized `slotProps` API**: MUI v7 deprecated nested component props (`PaperProps`, `inputProps`, `BackdropProps`). Always use standardized `slotProps`:
+   ```tsx
+   // ✅ Standardized MUI v7 slotProps:
+   <Dialog slotProps={{ paper: { className: "MonitoringReportDialog-paper" } }} ... />
+   <TextField slotProps={{ input: { readOnly: true } }} ... />
+   ```
+3. **Semantic Palette Props over Custom CSS**: Leverage built-in typography palette awareness rather than micro-injecting CSS classes:
+   ```tsx
+   // ✅ Automatically flips between light/dark secondary colors:
+   <Typography variant="caption" color="text.secondary">Subtitle text</Typography>
+   ```
+4. **Type-Safe Style Dictionaries (`SxProps<Theme>`)**: When custom MUI styles are needed, isolate them into typed dictionaries at the top of the file rather than scattering inline `sx` objects across JSX:
+   ```typescript
+   import type { SxProps, Theme } from "@mui/material/styles";
+
+   const styles: Record<string, SxProps<Theme>> = {
+       progressBox: {
+           display: "flex",
+           alignItems: "center",
+           gap: 1.5,
+           p: 1.5,
+           borderRadius: "var(--borderRadius, 4px)",
+           backgroundColor: "var(--secondaryBackground, #f8fafc)",
+       },
+   };
+   ```
+
 #### Tier 2: Non-MUI Chrome & Custom Layout Containers
 For non-MUI DOM elements (`div`, `header`, `aside`, card chrome, borders, scroll containers), consume official host CSS design tokens directly in co-located namespaced CSS (`ComponentName.css`):
 ```css
