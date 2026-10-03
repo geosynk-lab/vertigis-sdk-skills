@@ -719,27 +719,117 @@ export function useIsDarkTheme(): boolean {
 
 ---
 
-### 3. Host-Owned Theming & Elimination of ThemeProviders
+### 3. Two-Tier Theming Architecture: VertiGisThemeProvider & Host Design Tokens
 
-In VertiGIS Studio Web, branding and visual identity are owned, configured, and managed exclusively by the **host application shell** (`.vsw-app`) via the `branding` service in `app-config.json` and Designer.
+In VertiGIS Studio Web, branding and visual identity are owned by the **host application shell** (`.vsw-app`) via the `branding` service in `app-config.json` and Designer. To bridge this into custom extensions cleanly without CSS bloat, apply the **Two-Tier Styling Architecture**:
 
-#### The Crash of Custom ThemeProviders
-Previously, custom extensions attempted to bridge VertiGIS tokens into Material UI by creating a custom theme provider:
+#### Tier 1: Standard Material UI Controls (`VertiGisThemeProvider`)
+Standard MUI controls (`<Radio>`, `<Checkbox>`, `<Button>`, `<Typography>`, `<Dialog>`, `<Switch>`, `<TextField>`, `<Select>`) must be wrapped in a shared or scoped `VertiGisThemeProvider` driven by `useIsDarkTheme()`.
+
 ```typescript
-// ❌ CRASH ANTI-PATTERN: Passing CSS variables into createTheme()
-export function createVertiGisMuiTheme(isDark: boolean): Theme {
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import * as React from "react";
+import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
+
+export const VertiGisThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const isDark = useIsDarkTheme();
+
+    const theme = React.useMemo(
+        () =>
+            createTheme({
+                palette: {
+                    mode: isDark ? "dark" : "light",
+                    background: {
+                        default: isDark ? "#1e1e1e" : "#ffffff",
+                        paper: isDark ? "#252526" : "#ffffff",
+                    },
+                    text: {
+                        primary: isDark ? "#ffffff" : "#212121",
+                        secondary: isDark ? "rgba(255, 255, 255, 0.7)" : "#666666",
+                    },
+                },
+                spacing: 5, // VertiGIS Meridian compact 5px grid
+                typography: {
+                    fontFamily: 'var(--defaultFont, "Segoe UI", "Helvetica Neue", "Roboto", sans-serif)',
+                },
+                components: {
+                    MuiCheckbox: {
+                        defaultProps: { size: "small" },
+                        styleOverrides: {
+                            root: {
+                                "&.Mui-checked": {
+                                    color: "var(--primaryAccent, #007ac2)",
+                                },
+                            },
+                        },
+                    },
+                    MuiRadio: {
+                        defaultProps: { size: "small" },
+                        styleOverrides: {
+                            root: {
+                                "&.Mui-checked": {
+                                    color: "var(--primaryAccent, #007ac2)",
+                                },
+                            },
+                        },
+                    },
+                    MuiButton: {
+                        defaultProps: { size: "small" },
+                        styleOverrides: {
+                            root: {
+                                textTransform: "none",
+                                fontWeight: 600,
+                            },
+                        },
+                    },
+                    MuiTypography: {
+                        styleOverrides: {
+                            root: {
+                                color: "inherit",
+                            },
+                        },
+                    },
+                },
+            }),
+        [isDark]
+    );
+
+    return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
+};
+```
+
+##### The Crash Anti-Pattern: Why `augmentColor()` Fails
+Passing raw CSS variables into `palette.primary.main` or `palette.error.main` causes MUI to crash:
+```typescript
+// ❌ CRASH ANTI-PATTERN: Passing CSS variables into palette.*.main
+export function createBrokenMuiTheme(): Theme {
     return createTheme({
         palette: {
-            error: { main: "var(--alertRedForeground, #d32f2f)" },
+            primary: { main: "var(--primaryAccent, #007ac2)" }, // CRASHES!
         },
     });
 }
 ```
-**Why this crashed**: Material UI's `createTheme()` runs `augmentColor()` to automatically compute hover and focus shades using mathematical color calculations (`decomposeColor` -> `lighten`/`darken`). Because `var(...)` is an unresolvable string in JavaScript, `decomposeColor()` threw a fatal error across all browsers:
+**Why this crashes**: Material UI's `createTheme()` runs `augmentColor()` to automatically compute hover and focus shades using mathematical color calculations (`decomposeColor` -> `lighten`/`darken`). Because `var(...)` is an unresolvable string in JavaScript, `decomposeColor()` throws:
 ```text
-Error: MUI: Unsupported `var(--alertRedForeground, #d32f2f)` color.
+Error: MUI: Unsupported `var(--primaryAccent, #007ac2)` color.
 The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla(), color().
 ```
+**The Fix**: Keep `palette.mode: isDark ? "dark" : "light"` clean, and attach CSS custom properties to component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent)" } } } }`).
+
+#### Tier 2: Non-MUI Chrome & Custom Layout Containers
+For non-MUI DOM elements (`div`, `header`, `aside`, card chrome, borders, scroll containers), consume official host CSS design tokens directly in co-located namespaced CSS (`ComponentName.css`):
+```css
+.MonitoringCard {
+    background-color: var(--primaryBackground, #ffffff);
+    border: var(--borderWidth, 1px) solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+    color: var(--primaryForeground, #212121);
+}
+```
+
+#### Tier 3: Non-CSS Rendering Pipelines (Charts & PDF)
+Standalone renderers (Nivo Line charts, Plotly, HTML5 Canvas, jsPDF) read JavaScript token values directly via `UI_TOKENS` and synchronize with `useIsDarkTheme()` or `isDarkTheme()`.
 
 #### Why `@vertigis/web/ui` Controls Crash Outside the Shell
 Attempting to import UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`) from `@vertigis/web/ui` introduces a separate critical vulnerability:
@@ -749,12 +839,7 @@ Attempting to import UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, 
   ```text
   TypeError: Cannot read properties of undefined (reading 'translate')
   ```
-* Furthermore, `@vertigis/web/ui` is an internal package of the host shell, not a stable public component library for extensions.
-
-#### The Architectural Resolution
-1. **Never wrap custom widgets in a custom `ThemeProvider`**: The host shell (`.vsw-app`) injects all CSS variables automatically. Custom widgets inherit this theme natively through the DOM.
-2. **Never import UI controls from `@vertigis/web/ui`**: Build UI using standard HTML elements or approved primitives. Reserve `@vertigis/web/ui` strictly for non-UI SDK hooks when needed (e.g. `useWatchAndRerender`).
-3. **No `muiTheme.ts`**: Extensions do not need `muiTheme.ts` or custom theme factories.
+* Never import UI controls from `@vertigis/web/ui`. Use standard `@mui/material` controls wrapped in `VertiGisThemeProvider`.
 
 ---
 
