@@ -1,0 +1,13 @@
+.Panel {
+    padding: 8px;
+}
+
+.Panel-header {
+    position: sticky;
+    top: 0;
+    background-color: var(--primaryBackground, #ffffff);
+}
+
+.Panel-note {
+    color: var(--secondaryForeground, #575757);
+}

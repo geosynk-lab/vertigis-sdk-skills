@@ -122,8 +122,9 @@ For React components to re-render when MobX `@observable` or `@serializable` pro
 ```tsx
 import { observer } from "mobx-react-lite";
 import { LayoutElement, LayoutElementProperties } from "@vertigis/web/components";
+import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { LiveDataModel } from "./LiveDataModel";
-import { Box, Typography, List, ListItem, ListItemText } from "@mui/material";
+import { Typography, List, ListItem, ListItemText } from "@mui/material";
 
 interface LiveDataWidgetProps extends LayoutElementProperties<LiveDataModel> {}
 
@@ -131,18 +132,18 @@ const LiveDataWidget = observer(function LiveDataWidget(props: LiveDataWidgetPro
     const { model } = props;
     return (
         <LayoutElement {...props}>
-            <Box sx={{ p: 1 }}>
-                <Typography variant="h6" sx={{ color: "var(--primaryForeground)" }}>
+            <ErrorBoundary fallbackMessage="Live data widget failed to load.">
+                <Typography variant="h6">
                     Live Items ({model.items.length})
                 </Typography>
                 <List>
                     {model.items.map((item, i) => (
                         <ListItem key={i}>
-                            <ListItemText primary={item} sx={{ color: "var(--primaryForeground)" }} />
+                            <ListItemText primary={item} />
                         </ListItem>
                     ))}
                 </List>
-            </Box>
+            </ErrorBoundary>
         </LayoutElement>
     );
 });

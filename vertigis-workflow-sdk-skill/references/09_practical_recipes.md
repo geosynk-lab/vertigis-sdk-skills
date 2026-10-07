@@ -4,6 +4,15 @@
 
 An activity that accepts an input geometry, projects it to Web Mercator (WKID 3857), and adds it to the active map using `MapProvider`.
 
+### `src/activities/AddProjectedGraphic/tokens/symbols.ts`
+```typescript
+export const GRAPHIC_SYMBOL_TOKENS = {
+  fill: "rgba(0, 120, 255, 0.4)",
+  outline: [0, 80, 200, 1],
+  outlineWidth: 1.5,
+};
+```
+
 ### `src/activities/AddProjectedGraphic/main.ts`
 ```typescript
 import { MapProvider } from "@vertigis/workflow/activities/arcgis/MapProvider";
@@ -13,6 +22,7 @@ import * as projection from "@arcgis/core/geometry/projection";
 import Graphic from "@arcgis/core/Graphic";
 import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
+import { GRAPHIC_SYMBOL_TOKENS } from "./tokens/symbols";
 
 interface AddProjectedGraphicInputs {
   /**
@@ -62,44 +72,48 @@ export default class AddProjectedGraphicActivity implements IActivityHandler {
     _context: IActivityContext,
     type: typeof MapProvider
   ): Promise<AddProjectedGraphicOutputs> {
-    const { showLogger = false, fillColor = "rgba(0, 120, 255, 0.4)" } = inputs;
+    try {
+      const { showLogger = false, fillColor = GRAPHIC_SYMBOL_TOKENS.fill } = inputs;
 
-    const runActivity = inputs.runActivity !== undefined ? inputs.runActivity : true;
-    if (!runActivity) {
-      if (showLogger) console.log("AddProjectedGraphicActivity skipped.");
-      return { success: false };
+      const runActivity = inputs.runActivity !== undefined ? inputs.runActivity : true;
+      if (!runActivity) {
+        if (showLogger) console.log("AddProjectedGraphicActivity skipped.");
+        return { success: false };
+      }
+
+      if (!inputs.geometry) {
+        throw new Error("Input geometry is required.");
+      }
+
+      // Load projection engine
+      await projection.load();
+
+      const targetSR = new SpatialReference({ wkid: 3857 });
+      const projectedGeom = projection.project(inputs.geometry, targetSR) as __esri.Geometry;
+
+      const mapProvider = type.create();
+      await mapProvider.load();
+
+      const view = mapProvider.view as __esri.MapView;
+      if (!view) {
+        throw new Error("Active MapView is not available.");
+      }
+
+      const graphic = new Graphic({
+        geometry: projectedGeom,
+        symbol: new SimpleFillSymbol({
+          color: fillColor as any,
+          outline: { color: GRAPHIC_SYMBOL_TOKENS.outline, width: GRAPHIC_SYMBOL_TOKENS.outlineWidth },
+        }),
+      });
+
+      view.graphics.add(graphic);
+      if (showLogger) console.log("Graphic successfully added to map view.");
+
+      return { success: true };
+    } catch (error) {
+      throw new Error(`AddProjectedGraphicActivity failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    if (!inputs.geometry) {
-      throw new Error("Input geometry is required.");
-    }
-
-    // Load projection engine
-    await projection.load();
-
-    const targetSR = new SpatialReference({ wkid: 3857 });
-    const projectedGeom = projection.project(inputs.geometry, targetSR) as __esri.Geometry;
-
-    const mapProvider = type.create();
-    await mapProvider.load();
-
-    const view = mapProvider.view as __esri.MapView;
-    if (!view) {
-      throw new Error("Active MapView is not available.");
-    }
-
-    const graphic = new Graphic({
-      geometry: projectedGeom,
-      symbol: new SimpleFillSymbol({
-        color: fillColor as any,
-        outline: { color: [0, 80, 200, 1], width: 1.5 },
-      }),
-    });
-
-    view.graphics.add(graphic);
-    if (showLogger) console.log("Graphic successfully added to map view.");
-
-    return { success: true };
   }
 }
 ```
@@ -115,6 +129,7 @@ A production-quality Star Rating form element respecting `enabled`, `visible`, a
 import * as React from "react";
 import { FormElementProps, FormElementRegistration } from "@vertigis/workflow";
 import { Stack, IconButton, Typography } from "@mui/material";
+import { FormElementErrorBoundary } from "./components/FormElementErrorBoundary";
 // Note: In a real project, you would import icons from @mui/icons-material
 // e.g., import StarIcon from '@mui/icons-material/Star';
 // For this example, we use a simple text character inside the icon button.
@@ -124,7 +139,7 @@ export interface StarRatingProps extends FormElementProps<number> {
   maxStars?: number;
 }
 
-function StarRating(props: StarRatingProps): React.ReactElement {
+function StarRatingView(props: StarRatingProps): React.ReactElement | null {
   const {
     value = 0,
     setValue,
@@ -134,7 +149,7 @@ function StarRating(props: StarRatingProps): React.ReactElement {
     readOnly = false,
   } = props;
 
-  if (!visible) return <></>;
+  if (!visible) return null;
 
   const handleSelect = (starIndex: number) => {
     if (!enabled || readOnly) return;
@@ -150,7 +165,7 @@ function StarRating(props: StarRatingProps): React.ReactElement {
           return (
             <IconButton
               key={starNumber}
-              disabled={!enabled || readOnly}
+              disabled={!enabled}
               onClick={() => handleSelect(starNumber)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -173,10 +188,18 @@ function StarRating(props: StarRatingProps): React.ReactElement {
           );
         })}
       </Stack>
-      <Typography variant="body2" sx={{ color: "var(--secondaryForeground)", ml: 1 }} aria-live="polite">
+      <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }} aria-live="polite">
         {value ? `${value} / ${maxStars}` : "Unrated"}
       </Typography>
     </Stack>
+  );
+}
+
+export function StarRating(props: StarRatingProps): React.ReactElement {
+  return (
+    <FormElementErrorBoundary>
+      <StarRatingView {...props} />
+    </FormElementErrorBoundary>
   );
 }
 

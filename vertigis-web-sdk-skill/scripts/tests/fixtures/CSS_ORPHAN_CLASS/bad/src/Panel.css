@@ -1,0 +1,6 @@
+.my-widget__panel {
+    display: flex;
+}
+.my-widget__unused {
+    display: block;
+}

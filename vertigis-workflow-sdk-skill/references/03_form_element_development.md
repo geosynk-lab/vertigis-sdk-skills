@@ -67,12 +67,7 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
         >
             {/* Header section showcasing Typography System */}
             <Box>
-                <Typography
-                    variant="subtitle1"
-                    sx={{
-                        fontWeight: tokens.typography.fontWeight.semibold,
-                    }}
-                >
+                <Typography variant="subtitle1">
                     Custom Inspection Field
                 </Typography>
                 <Typography
@@ -92,9 +87,9 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
                 value={value ?? ""}
                 disabled={!enabled}
                 helperText="Required minimum 6 characters for valid status."
-                inputProps={{
-                    readOnly,
-                    "aria-label": "Custom Input Field",
+                slotProps={{
+                    input: { readOnly },
+                    htmlInput: { "aria-label": "Custom Input Field" },
                 }}
                 onChange={(e) => handleChange(e.currentTarget.value)}
             />
@@ -165,7 +160,7 @@ In the Workflow Designer, you can read these secondary values at any time using 
 
 If your form element needs to trigger custom logic or branching in the workflow (e.g. a "Scan Barcode" or "Calculate Route" button), use `props.raiseEvent("custom", eventData)`.
 
-```tsx
+```tsx fragment
 import * as React from "react";
 import { FormElementProps, FormElementRegistration } from "@vertigis/workflow";
 import { Button } from "@mui/material";
@@ -199,11 +194,6 @@ function ScannerElement(props: ScannerProps) {
             onClick={() => handleScanComplete("123456789")}
             sx={{
                 minHeight: tokens.ui.touch.minHeight, // Minimum 44x44px mobile touch target
-                backgroundColor: tokens.ui.control.buttonBackground,
-                color: tokens.ui.control.buttonForeground,
-                "&:hover": {
-                    backgroundColor: tokens.ui.accent.hover,
-                },
             }}
         >
             Simulate Scan
@@ -242,7 +232,7 @@ The workflow runtime injects `enabled`, `visible`, and `readOnly` automatically.
 | Prop | Target HTML / MUI Prop | Rule |
 | :--- | :--- | :--- |
 | `enabled` | `disabled={!enabled}` | Inverted boolean for standard HTML / MUI |
-| `readOnly` | `inputProps={{ readOnly }}` | Forwarded to `inputProps` on MUI components |
+| `readOnly` | `slotProps={{ input: { readOnly } }}` | Forwarded to `slotProps.input` on MUI components |
 | `visible` | `if (!visible) return null;` | Conditionally hides DOM element |
 
 ---

@@ -1,0 +1,4 @@
+.Panel-hint {
+    background-color: var(--itemHoverBackground, #89b8e4);
+    color: var(--secondaryForeground, #575757);
+}

@@ -35,7 +35,16 @@ flowchart TD
 
 ## 2. Categorized Code Review Audit Framework
 
-When performing a code review or when asked to **"Review my code"**, audit the codebase according to the specific extension type and categorize findings by severity level:
+When performing a code review or when asked to **"Review my code"**, audit the codebase according to the specific extension type and categorize findings by severity level.
+
+For styling findings, run the static styling audit first and base the report on its output rather than on manual searches. If `src/utils/stylingAudit.test.ts` is missing, install it with `python3 vertigis-web-sdk-skill/scripts/install_styling_audit.py --target-dir <repo>`, then run:
+
+```bash
+# Counts per rule
+STYLE_AUDIT_REPORT=1 npx vitest run src/utils/stylingAudit.test.ts -t "prints a report"
+# Violations with line numbers for one file or folder
+STYLE_AUDIT_REPORT=1 STYLE_AUDIT_FILE=src/components/MyWidget npx vitest run src/utils/stylingAudit.test.ts -t "prints a report"
+```
 
 ### 🧩 A. Web Component Review (`ComponentModelBase` + React View)
 
@@ -56,7 +65,7 @@ When performing a code review or when asked to **"Review my code"**, audit the c
 - **Missing CSS Token Fallbacks**: Flag any CSS variable token used without a default fallback value (e.g., `var(--primaryBackground)` instead of `var(--primaryBackground, #ffffff)`). Missing fallbacks cause blank/transparent rendering in isolated unit tests, Storybook sandboxes, and during initial shell boot.
 - **Theme Adaptation Violations**: Flag manual CSS theme class toggling (e.g. `.dark-mode` overrides) instead of modern `color-mix(in srgb, ...)`. Flag missing `useIsDarkTheme()` hook or lack of `isDarkTheme()` utility when integrating non-CSS rendering engines (Plotly charts, HTML Canvas, WebGL, or PDF exports).
 - **Missing Error Boundary**: Custom widget contents should be wrapped in an `<ErrorBoundary>` to prevent a single component crash from breaking the entire application layout.
-- **CSS Modules / Custom CSS**: Avoid creating `.css` or `.module.css` files. Use MUI's `sx` prop referencing CSS tokens and `color-mix()` helpers.
+- **Styling Method Violations**: Flag static `style={{ ... }}` values (move them to the co-located namespaced `ComponentName.css`), elements combining `className` with static `style`, inline `sx={{ ... }}` objects (use a `Record<string, SxProps<Theme>>` dictionary), orphan or duplicated CSS classes, and token fallbacks that differ from `src/tokens/ui.ts`. Avoid `.module.css` files; the SDK pipeline does not hash class names.
 - **Token Role Mismatch**: Ensure proper tokens are used according to role (e.g. `var(--secondaryForeground, #666666)` for subtitles/captions, `var(--primaryAccentHover, #005a91)` on hover states, `var(--primaryBorder, #e0e0e0)` on card outlines).
 - **Resource Leaks in Lifecycle**: Any event subscriptions, background intervals, or MobX reactions created in `_onInitialize()` MUST be disposed in `_onDestroy()`.
 - **Complex `@serializable` Types**: Non-primitive properties (like `Date` or custom classes) in `@serializable` must have explicit `{ serializer, deserializer }` definitions.

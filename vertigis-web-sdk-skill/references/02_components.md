@@ -125,6 +125,7 @@ import {
 } from "@vertigis/web/components";
 import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { MyWidgetModel } from "./MyWidgetModel";
+import "./MyWidget.css";
 
 export interface MyWidgetProps extends LayoutElementProperties<MyWidgetModel> {
     /**
@@ -151,84 +152,42 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
     return (
         <LayoutElement {...props}>
             <ErrorBoundary fallbackMessage="Widget failed to load.">
-                <Box
-                    sx={{
-                        p: 2,
-                        backgroundColor: "var(--primaryBackground, #ffffff)",
-                        borderRadius: "var(--borderRadius, 4px)",
-                        border: showBorder ? "1px solid var(--primaryBorder, #e0e0e0)" : "none",
-                    }}
-                >
+                <Box className={showBorder ? "MyWidget MyWidget--bordered" : "MyWidget"}>
                     {/* Widget Title with MUI Typography (Zero redundant font-family) */}
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            color: "var(--primaryForeground, #212121)",
-                            mb: 0.5,
-                        }}
-                    >
+                    <Typography variant="h6" sx={{ mb: 0.5 }}>
                         {model.greetingText}
                     </Typography>
 
                     {/* Section Subtitle */}
-                    <Typography
-                        variant="subtitle2"
-                        sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}
-                    >
+                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
                         Interactive Counter & Diagnostics
                     </Typography>
 
                     {/* Nested Container Surface */}
-                    <Box
-                        sx={{
-                            p: 1.5,
-                            mb: 2,
-                            backgroundColor: "var(--secondaryBackground, #f5f5f5)",
-                            border: "1px solid var(--primaryBorder, #e0e0e0)",
-                            borderRadius: "var(--borderRadius, 4px)",
-                        }}
-                    >
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                            <Typography variant="body1" sx={{ color: "var(--primaryForeground, #212121)" }}>
-                                Current Count: <Box component="span" sx={{ fontWeight: "bold" }}>{model.count}</Box>
+                    <Box className="MyWidget-surface">
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" className="MyWidget-row">
+                            <Typography variant="body1">
+                                Current Count: <strong>{model.count}</strong>
                             </Typography>
-                            <Typography
-                                variant="overline"
-                                sx={{
-                                    px: 1,
-                                    py: 0.25,
-                                    borderRadius: "var(--borderRadiusSm, 2px)",
-                                    backgroundColor: "var(--alertGreenBackground, #edf7ed)",
-                                    color: "var(--alertGreenForeground, #2e7d32)",
-                                    fontWeight: "bold",
-                                }}
-                            >
-                                ACTIVE
-                            </Typography>
+                            <Box component="span" className="MyWidget-badge">
+                                <Typography variant="overline" color="inherit">
+                                    ACTIVE
+                                </Typography>
+                            </Box>
                         </Stack>
 
-                        <Typography variant="body2" sx={{ color: "var(--secondaryForeground, #666666)", mb: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                             Configuration parameter: {customConfigParam} (Interval: {refreshInterval}s)
                         </Typography>
 
-                        <Button
-                            variant="contained"
-                            onClick={handleAction}
-                            sx={{
-                                backgroundColor: "var(--emphasizedButtonBackground, var(--primaryAccent, #007ac2))",
-                                color: "var(--buttonForeground, #ffffff)",
-                                "&:hover": {
-                                    backgroundColor: "var(--primaryAccentHover, #005a91)",
-                                },
-                            }}
-                        >
+                        <Button variant="contained" color="primary" onClick={handleAction}>
                             Increment Count
                         </Button>
                     </Box>
 
                     {/* Microcopy / Caption Metadata */}
                     {model.map && (
-                        <Typography variant="caption" sx={{ color: "var(--secondaryForeground, #666666)", display: "block" }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                             Attached Map ID: {model.map.id}
                         </Typography>
                     )}
@@ -239,6 +198,38 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 });
 
 export default MyWidget;
+```
+
+Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
+
+```css
+.MyWidget {
+    padding: 1rem;
+}
+
+.MyWidget--bordered {
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+}
+
+.MyWidget-surface {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+    background-color: var(--secondaryBackground, #f5f5f5);
+}
+
+.MyWidget-row {
+    margin-bottom: 0.5rem;
+}
+
+.MyWidget-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--borderRadiusSm, 2px);
+    background-color: var(--alertGreenBackground, #008040);
+    color: var(--alertGreenForeground, #ffffff);
+}
 ```
 
 #### 2. Component Model Dynamic Configuration
@@ -605,7 +596,7 @@ This error occurs because of an interaction between the Web SDK's inheritance hi
 2. **ES2022 Class Field Clobbering (`useDefineForClassFields: true`)**:
    - Modern VertiGIS SDK build pipelines target `es2022`. Under ECMAScript standard class field semantics, instance fields declared in derived classes execute immediately after `super()` completes.
    - If a custom component model declares:
-     ```typescript
+     ```typescript bad
      // ❌ FATAL ANTI-PATTERN
      export class CustomModel extends ComponentModelBase {
          private _handles: any[] = []; // or private _handles: IHandle[] = [];
@@ -752,6 +743,7 @@ Wrap custom widget contents in an Error Boundary (`src/utils/ErrorBoundary.tsx`)
 // src/utils/ErrorBoundary.tsx
 import * as React from "react";
 import { Box, Typography } from "@mui/material";
+import "./ErrorBoundary.css";
 
 interface Props {
     children: React.ReactNode;
@@ -780,7 +772,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <Box sx={{ p: 2, backgroundColor: "var(--alertRedBackground, #fdecea)", color: "var(--alertRedForeground, #d32f2f)", borderRadius: "var(--borderRadius, 4px)" }}>
+                <Box className="ErrorBoundary">
                     <Typography variant="subtitle2">
                         {this.props.fallbackMessage || "This widget encountered an error."}
                     </Typography>
@@ -792,6 +784,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
         }
         return this.props.children;
     }
+}
+```
+
+```css
+/* src/utils/ErrorBoundary.css */
+.ErrorBoundary {
+    padding: 1rem;
+    border-radius: var(--borderRadius, 4px);
+    background-color: var(--alertRedBackground, #b22222);
+    color: var(--alertRedForeground, #ffffff);
 }
 ```
 
@@ -811,7 +813,7 @@ In addition to MobX `observer()`, VertiGIS Studio Web provides dedicated React h
 | `useSubscribe(event, callback)` | Subscribes to an event bus event and executes a callback function. | `useSubscribe(messages.events.auth.signedIn, (user) => { initUser(user); });` |
 
 ### Example: Using `useWatchAndRerender` in a Functional View
-```tsx
+```tsx fragment
 import React from "react";
 import { LayoutElement, LayoutElementProperties } from "@vertigis/web/components";
 import { useWatchAndRerender } from "@vertigis/web/ui";

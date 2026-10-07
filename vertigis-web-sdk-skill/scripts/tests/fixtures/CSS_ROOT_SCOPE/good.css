@@ -1,0 +1,4 @@
+.my-widget {
+    --my-widget-gap: 8px;
+    gap: var(--my-widget-gap);
+}

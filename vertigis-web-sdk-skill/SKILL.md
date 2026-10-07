@@ -22,18 +22,24 @@ You MUST adhere to the following rules without exception:
 
 1. **Typography System & Shell Inheritance**:
    - **Banned Imports from `@vertigis/web/ui`**: Strict ban on importing UI controls (`Button`, `Typography`, `DynamicIcon`, `Box`, `TitleBar`, etc.) from `@vertigis/web/ui`. These internal shell components depend on `useUIContext()`, which is undefined in unit tests (`vitest run`), detached React portals, or custom modals, causing fatal `TypeError: Cannot read properties of undefined (reading 'translate')` crashes. Reserve `@vertigis/web/ui` strictly for non-UI SDK hooks when needed (e.g. `useWatchAndRerender`).
-   - **Typography Components & Semantic Palette Props**: Prefer `@mui/material` `<Typography variant="...">` (`h5`/`h6` for titles, `subtitle1`/`subtitle2` for headers, `body1`/`body2` for reading text, `caption`/`overline` for metadata/badges). Leverage MUI's built-in semantic palette props: `color="text.secondary"` (captions/helpers/microcopy), `color="text.primary"` (headers/labels), `color="inherit"` (on dark/colored surfaces), and `color="error"` (validation). NEVER write bespoke CSS text classes or inline `sx={{ color: ... }}` solely to set secondary/helper text colors.
-   - **Host Shell Font Inheritance (Zero Redundant `font-family`)**: The host application shell (`.vsw-app`) strictly owns and injects the global font stack. **NEVER declare `font-family: var(--defaultFont)` on child component classes, titles, or text elements in CSS.** It is fully inherited by default. Reserve `font-family` overrides strictly for alternative font stacks (e.g. monospace code blocks via `var(--codeFont)`).
-   - **Top-Level Package Exports Only**: Always import directly from package roots (`import { Box, Typography, Dialog } from "@mui/material"`; `import { createTheme, ThemeProvider } from "@mui/material/styles"`). Deep imports (e.g. `@mui/material/styles/createTheme`) are deprecated in MUI v7 and break under modern bundlers.
+   - **Typography Components & Semantic Palette Props**: Prefer `@mui/material` `<Typography variant="...">` (`h5`/`h6` for titles, `subtitle1`/`subtitle2` for headers, `body1`/`body2` for reading text, `caption`/`overline` for metadata/badges). Primary text has no `color` prop: it inherits the host foreground (`color="text.primary"` is redundant and is flagged). Use `color="text.secondary"` (captions/helpers/microcopy), `color="inherit"` (inside a coloured surface that sets its own foreground), and `color="error"` (validation). NEVER write bespoke CSS text classes or inline `sx={{ color: ... }}` solely to set secondary/helper text colors.
+   - **Zero `font-family` (No Exceptions)**: The host application shell (`.vsw-app`) strictly owns and injects the global font stack. **NEVER declare `font-family`, the `font:` shorthand, or `fontFamily` anywhere**: CSS, `sx`, `style`, token files (no font-stack tokens, including `var(--codeFont)`/monospace stacks). The single allowed line is `typography: { fontFamily: "inherit" }` in the `createTheme` theme provider (or a Tier 3 chart library theme such as Nivo): MUI and chart libraries otherwise apply their own default font (Roboto / sans-serif) instead of the host font.
+   - **Top-Level Package Exports Only**: Always import directly from package roots (`import { Box, Typography, Dialog } from "@mui/material"`; `import { createTheme, ThemeProvider } from "@mui/material/styles"`). Deep imports (e.g. `@mui/material/styles/createTheme`, `@mui/material/Box`) are deprecated in MUI v7 and break under modern bundlers. Import style-dictionary types from the root too (`import type { SxProps, Theme } from "@mui/material"`); `@mui/material/styles` triggers the SDK `no-restricted-imports` lint warning, so reserve it for the theme provider file.
+   - **No Theme-Level Typography Colour**: NEVER set `color` inside `components.MuiTypography.styleOverrides` in `createTheme`. It overrides every `<Typography color="...">` prop and silently disables semantic palette props.
 2. **Two-Tier Styling Architecture (VertiGisThemeProvider for MUI & Direct Token Consumption for Non-MUI)**:
    - **Tier 1 (MUI Controls: Radio, Checkbox, Button, Typography, Dialog, Switch, Form Controls)**: Standard MUI controls MUST be wrapped in a shared `VertiGisThemeProvider` (or scoped dialog/modal wrapper) driven by `useIsDarkTheme()`, setting `palette: { mode: isDark ? "dark" : "light" }` with Meridian compact defaults and dynamic brand checked overrides.
+     - **Shell Token Theme Detection Precedence**: Determine the active theme from explicit `.vsw-app` class/data markers first, then infer luminance from the computed `--primaryBackground` shell token, then from the computed root background. Use `(prefers-color-scheme: dark)` only as the final fallback. The operating-system preference must never override an already-rendered VertiGIS shell theme.
+     - **MUI Portal Containment**: Configure `MuiPopover.defaultProps.container` with a function that returns `.vsw-app` (falling back to `document.body`). Menus, selects, and popovers must mount inside the shell so they inherit host tokens and remain in the same stacking/theme context. Do not force menu text or surface colours with `!important`; use MUI semantic palette states (`text.primary`, `action.hover`, `action.selected`).
      - **Inheritance-First / Zero Color Injection Rule for MUI**: Never micro-inject CSS classes (`.MuiRadio-root`, `.MuiCheckbox-root`, `.MuiTypography-root`, etc.) or inline `sx` color overrides to force theme colors onto standard MUI controls. MUI handles light/dark states, hover, focus rings, disabled opacity, and text contrast natively via the theme provider. Only customize via CSS or `sx` if a control intentionally requires non-standard visual divergence.
      - **Strict Ban on `<CssBaseline />`**: NEVER mount `<CssBaseline />` under `VertiGisThemeProvider` or anywhere in extensions. Custom libraries are guest widgets running inside `.vsw-app`. `<CssBaseline />` injects global CSS resets (`html`, `body`, scrollbars, box-sizing) that clobber the host application shell, corrupt Esri map canvas viewports, and reset host layout rules.
      - **MUI v7 `slotProps` Standardization**: Standardize on `slotProps` for composite controls. Legacy nested props (`PaperProps`, `InputProps`, `BackdropProps`) are deprecated. For example, use `<Dialog slotProps={{ paper: { className: "..." } }}>` and `<TextField slotProps={{ input: { readOnly } }}>`. In modals, use `onClose` instead of deprecated `onBackdropClick`.
      - **Type-Safe Style Dictionaries (`Record<string, SxProps<Theme>>`)**: When custom MUI styles are genuinely necessary beyond theme defaults, do not scatter verbose inline `sx={{ ... }}` objects across markup. Define type-safe dictionaries at the top of the file: `const styles: Record<string, SxProps<Theme>> = { ... }` (or `ComponentName.styles.ts` for files >= 100 lines).
      - **The `augmentColor` Crash Prevention**: Passing raw `var(...)` strings into `palette.primary.main` or `palette.error.main` crashes MUI (`Error: MUI: Unsupported var(...) color`). All CSS variable integrations MUST be attached via component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } } }`), NEVER in `palette.*.main`.
-   - **Tier 2 (Non-MUI Chrome & Custom Layout Containers)**: Plain HTML elements (`div`, `header`, `aside`, card borders, dividers, split containers) are styled in co-located namespaced CSS (`ComponentName.css`) consuming official host CSS design tokens with safe fallbacks (`var(--primaryBackground, #ffffff)`, `var(--primaryBorder, #e0e0e0)`).
-   - **Tier 3 (Non-CSS Renderers: Nivo/Plotly Charts, HTML5 Canvas, jsPDF)**: Standalone renderers consume tokens programmatically via JavaScript constants (`UI_TOKENS` + `useIsDarkTheme()` / `isDarkTheme()`).
+   - **Tier 2 (Non-MUI Chrome & Custom Layout Containers)**: Plain HTML elements (`div`, `header`, `aside`, card borders, dividers, split containers) are styled in co-located namespaced CSS (`ComponentName.css`) consuming official host CSS design tokens with safe fallbacks (`var(--primaryBorder, #e0e0e0)`, `var(--secondaryBackground, #ebebeb)` for a nested card).
+   - **Inherit, Don't Restate (Minimal CSS Injection)**: Widgets render inside the host panel, which already supplies text colour, background and font. NEVER restate them: no `color: var(--primaryForeground)`, no `background: var(--primaryBackground)` (a transparent element already shows the panel), no `<Typography color="text.primary">`, and no wrapper element whose only job is to set colours for its children. Set a colour token ONLY where the element deliberately differs from its parent (status banner, accent badge, nested card). Exceptions: opaque layers that cover other content (`position: sticky|fixed|absolute` or `z-index`), the `createTheme` provider, and content rendered outside the shell (portals), which must carry a `vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- <reason>` comment.
+   - **Token Pairing & Contrast (Validated)**: When an element sets a background, it MUST set the foreground from the same pair in the same CSS rule or `sx` object: `XBackground` with `XForeground` (e.g. `--alertRedBackground` with `--alertRedForeground`), accent fills (`--primaryAccent`) with `--emphasizedButtonForeground`. Text on panel surfaces (`--primaryBackground`, `--secondaryBackground`, `--primaryAccentLight`, item hover/selected) uses only `--primaryForeground` (inherited), `--secondaryForeground`, `--primaryAccent`, `--errorHelperTextForeground` or a disabled token. NEVER use a `*Foreground` token as a background or a `*Background` token as text (the inverse pair `--primaryForeground` / `--primaryBackground` is the only exception). Text must reach WCAG AA 4.5:1 against its background, computed from the `src/tokens/ui.ts` fallbacks (disabled text exempt). The host regenerates each pair together for dark themes, so pairing protects dark mode where fallback-based contrast cannot. The validator enforces `REDUNDANT_INHERITED_TOKEN`, `TOKEN_PAIRING` and `TOKEN_CONTRAST`.
+   - **Zero Hardcoded Colours**: NEVER write hex (`#ffffff`), `rgb()`/`rgba()`, or `hsl()`/`hsla()` colour literals in CSS, TS, or TSX, including `createTheme` palettes. The only places a colour literal may appear are `src/tokens/` and the fallback slot of `var(--token, <fallback>)`.
+   - **Tier 3 (Non-CSS Renderers: Nivo/Plotly Charts, HTML5 Canvas, jsPDF)**: Standalone renderers consume tokens programmatically via JavaScript constants from `src/tokens/` (`UI_TOKENS`, chart token maps such as `CHART_TOKENS`) + `useIsDarkTheme()` / `isDarkTheme()`.
    - **Shape Tokens & Border Radius**: NEVER hardcode pixel corner radii (e.g. `border-radius: 4px;`) in CSS or components. Always reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
    - **Host-Owned Branding Principle**: The host application shell (`.vsw-app`) strictly owns and manages all branding and themes via CSS custom properties configured in `app-config.json` / Designer. Components must NEVER create independent brands or redefine app branding.
    - **Strict Ban on Token Re-Aliasing & Intermediate Indirection**: NEVER invent intermediate alias variables or custom color indirection layers (e.g., `--color-background: var(--primaryBackground)`, `--monitoring-bg: var(--color-background)`, `--monitoring-text: var(--primaryForeground)`). Components MUST directly consume official VertiGIS host CSS tokens with safe fallbacks (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryForeground, #212121)`, `var(--primaryBorder, #e0e0e0)`). Creating shadow token systems introduces multi-hop indirection, breaks DevTools inspectability, causes team confusion, and fragments the design system.
@@ -42,6 +48,10 @@ You MUST adhere to the following rules without exception:
    - **Strict Ban on Global `:root` Injection**: NEVER declare `:root { ... }` rules in component CSS. Custom libraries are guest extensions running inside the host shell (`.vsw-app`). Declaring `:root` in library CSS pollutes the global document scope, risks overriding host variables, and leaks across unrelated widgets. If component-scoped CSS variables are needed for layout math (e.g. `--row-height: 36px`), declare them strictly on the namespaced component selector (e.g. `.ListHeader { --row-height: 36px; }`), never on `:root`, and never for color re-aliasing.
    - **Strict Class Namespacing (Host Shell Safety)**: Because the SDK Webpack pipeline compiles CSS via `style-loader` without CSS Modules hashing, all classes in `*.css` are injected globally into the host `<head>`. All classes MUST be strictly namespaced with the component name or BEM (e.g. `.ListHeader`, `.ListHeader-title` or `.list-header__title`). Strictly BANNED: generic classes like `.header`, `.title`, `.item`, `.button`, `.card`, `.active`.
    - **Minimal Style Injection & Style Hierarchy**: (1) Co-located `ComponentName.css` for static layouts, cards, hover states, and structural chrome (using `var(--borderRadius, 4px)` and zero redundant `font-family`). (2) Native `style={{ ... }}` ONLY for purely dynamic runtime calculations (e.g. calculated widths or coordinates). (3) Strict ban on scattering loose, repetitive `sx={{ ... }}` objects across markup. Rely on parent inheritance and tokens.
+   - **One Styling Method Per Element**: NEVER combine `className` with a static `style={{ ... }}` on the same element. Inline styles silently win over the CSS rule and block its hover/focus states. When migrating such an element, move the value that was actually rendered (the inline one) into the CSS, not the shadowed CSS value.
+   - **Zero Dead or Shared CSS**: Every class in a `*.css` file MUST be referenced in source (no orphan classes), and a top-level class MUST be defined in exactly one CSS file. Every `animation:` name MUST have a matching `@keyframes` in the same bundle. Shared MUI style dictionaries used by several components live in one `*Styles.ts` file, not copied per component.
+   - **`!important` Only for Host Overrides**: The only accepted `!important` is `display: none !important` hiding a closed widget against host-shell inline display styles. Never use it to fight MUI or your own CSS.
+   - **Canonical Token Fallbacks & Token Roles**: Every `var(--token, #fallback)` MUST use the same fallback as `src/tokens/ui.ts` (fallback drift renders different colours in tests and before shell boot). Outside `src/tokens/`, consume colours through `UI_TOKENS` in TS/TSX or through co-located CSS, never as raw `var(...)` string literals. Respect token roles: pale `--alert*Background` tokens are tints, never strong fills behind white text; chart series derive from foreground/accent tokens (`--primaryAccent`, `--alertGreenForeground`, `--alertRedForeground`), not border tokens.
 4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
 5. **Exposing Properties to Designer (Settings Schema Protocol & Attribute Lifecycle)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**:
    - **Safe Trimming & Explicit Attribute Deletion**: When persisting settings in `applyLayoutDesignerSettings`, NEVER write empty strings (`node.attributes.set(key, "")`). Writing empty strings creates sticky XML attributes that resurrect default values on reload. Always trim string inputs (`safeTrim`); if a value is present, call `node.attributes.set(kebabKey, val)`; if empty or cleared, call `node.attributes.delete(kebabKey)`.
@@ -57,11 +67,12 @@ You MUST adhere to the following rules without exception:
 9. **Enterprise Reliability & Theme Safety**: Wrap custom React widgets in `ErrorBoundary` components to prevent layout crashes. All subscriptions, intervals, and MobX reactions initialized in `_onInitialize()` MUST be cleanly disposed in `_onDestroy()`. Wrap Workflow Activity `execute` blocks in `try/catch` and throw structured errors. Add `aria-label` to interactive MUI components. Ensure theme safety across dynamic light/dark switches.
 10. **Lifecycle Contract & Reserved Property Protection (`_handles` Safety)**: Subclasses of `ComponentModelBase` and `ModelBase` MUST strictly adhere to the symmetric lifecycle contract: (1) In `_onInitialize()`, ALWAYS invoke `await super._onInitialize()` **first** before initializing component-specific resources, subscriptions, or layers. (2) In `_onDestroy()`, ALWAYS clean up component-specific resources, subscriptions, event listeners, sketch view models, and map graphics **first**, and invoke `await super._onDestroy()` **last** (symmetric teardown). (3) **Strict ban on declaring a custom `_handles` field**: Ancestor `InitializableBase` incorporates `HandlesMixin` (`@vertigis/arcgis-extensions/support/HandlesMixin.js`), which instantiates `this._handles` as an `@arcgis/core/core/Handles` instance and calls `this._handles.destroy()` on disposal. Under ES2022+ class field semantics (`useDefineForClassFields: true`), declaring a custom field named `_handles` (e.g., `private _handles: any[] = []`) silently overwrites the parent's `Handles` instance with a plain Array. When VertiGIS Studio Web Designer tears down models during app deployment or publishing packaging, `model.destroy()` triggers `super.destroy()`, crashing with `TypeError: this._handles.destroy is not a function`. Custom handle collections MUST use domain-specific names (e.g., `_eventHandles`, `_sketchHandles`, `_disposables`) or cleanly register into the inherited base `this._handles.add(...)`.
 11. **Gradual Verification Protocol & Mandatory Micro-Gates**:
-    - Never treat verification as a single end-of-task formality. Enforce the **4-Tier Gradual Verification Gate** after every code edit:
+    - Never treat verification as a single end-of-task formality. Enforce the **5-Tier Gradual Verification Gate** after every code edit:
       1. *Fast Typecheck*: `tsc --noEmit` (clean types).
-      2. *Unit & Contract Tests*: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase).
+      2. *Unit & Contract Tests*: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase). Theme integration tests MUST prove that the computed shell `--primaryBackground` outranks OS preference, MUI popovers resolve their container to `.vsw-app`, and no global `MuiTypography` colour override exists. The suite MUST include the static styling audit (`src/utils/stylingAudit.test.ts`, installed via `scripts/install_styling_audit.py`), which enforces Rules 1–4 with per-rule ratchet ceilings.
       3. *Dead Code & Hygiene Gate*: `knip` (zero unused exports, dead files, or orphan CSS).
       4. *Production Build*: `npm run build` or `pnpm run build` (clean compilation).
+      5. *Rule Validator*: `python3 vertigis-web-sdk-skill/scripts/validate_web_sdk.py --path <project>` MUST exit 0 (zero Critical violations). A rule may be suppressed only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>` (next line) or `/* vertigis-rule-disable-file RULE_ID -- <reason> */` (whole file). Suppressions without a reason, with `*`, or with an unknown rule ID fail the gate.
     - **2-Strike Halt Gate**: If a fix fails verification twice on the same step, STOP. Report what was tried, what failed, and ask for guidance.
 12. **Ponytail Code Minimization & Zero-Garbage Invariant**:
     - **Native Platform & MUI First**: Use native MUI controls (`IconButton`, `Typography`, `Radio`, `Checkbox`, `Box`, `Alert`) with `VertiGisThemeProvider`. NEVER write 30+ lines of custom CSS with `!important` targeting `.MuiRadio-root`, `.MuiCheckbox-root`, `.MuiButton-root`, or `.MuiFormControlLabel-label` to force dark mode colors. Wrap controls in `VertiGisThemeProvider` and let MUI handle states natively.
@@ -104,7 +115,7 @@ When the user triggers this skill or enters `initiate`:
 
 | Topic | Reference Guide | Key Focus Areas |
 | :--- | :--- | :--- |
-| **Interactive Tooling** | [Scaffolding & Scripts](./references/10_interactive_scaffolding_and_tooling.md) | Discovery flow, `initiate` command (`AGENTS.md` injection), code audit checklist, SSL certificates, `start.bat`, `build.bat`. |
+| **Interactive Tooling** | [Scaffolding & Scripts](./references/10_interactive_scaffolding_and_tooling.md) | Discovery flow, `initiate` command (`AGENTS.md` injection), code audit checklist, static styling audit test (`install_styling_audit.py`), SSL certificates, `start.bat`, `build.bat`. |
 | **Architecture & CLI** | [Overview & Concepts](./references/01_overview_and_concepts.md) | System model, CLI scaffolding, project structure, `src/index.ts`. |
 | **Custom Components** | [Components Guide](./references/02_components.md) | Component models (`*Model.ts`), React views (`*.tsx`), `LayoutElement`, `observer()`, MUI usage, symmetric lifecycle contracts (`_onInitialize` first, `_onDestroy` last), and `_handles` clobbering prevention. |
 | **Custom Services** | [Services Guide](./references/03_services.md) | Singletons, `ServiceBase`, state management, background timers, service injection. |
@@ -212,6 +223,7 @@ import {
     LayoutElement,
     LayoutElementProperties,
 } from "@vertigis/web/components";
+import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { CustomWidgetModel } from "./CustomWidgetModel";
 import "./CustomWidget.css";
 
@@ -221,25 +233,27 @@ const CustomWidget = observer(function CustomWidget(props: CustomWidgetProps) {
     const { model } = props;
     return (
         <LayoutElement {...props}>
-            <div className="CustomWidget">
-                {/* Header with Semantic Markup & Namespaced CSS */}
-                <h2 className="CustomWidget-title">{model.title}</h2>
-                <p className="CustomWidget-subtitle">Component Overview & State</p>
+            <ErrorBoundary fallbackMessage="Custom widget failed to load.">
+                <div className="CustomWidget">
+                    {/* Header with Semantic Markup & Namespaced CSS */}
+                    <h2 className="CustomWidget-title">{model.title}</h2>
+                    <p className="CustomWidget-subtitle">Component Overview & State</p>
 
-                {/* Nested Surface with Design Tokens */}
-                <div className="CustomWidget-card">
-                    <p className="CustomWidget-body">Primary content description.</p>
-                    <p className="CustomWidget-caption">
-                        Secondary helper details and configuration info.
-                    </p>
+                    {/* Nested Surface with Design Tokens */}
+                    <div className="CustomWidget-card">
+                        <p className="CustomWidget-body">Primary content description.</p>
+                        <p className="CustomWidget-caption">
+                            Secondary helper details and configuration info.
+                        </p>
+                    </div>
+
+                    {model.map && (
+                        <span className="CustomWidget-meta">
+                            Attached Map ID: {model.map.id}
+                        </span>
+                    )}
                 </div>
-
-                {model.map && (
-                    <span className="CustomWidget-meta">
-                        Attached Map ID: {model.map.id}
-                    </span>
-                )}
-            </div>
+            </ErrorBoundary>
         </LayoutElement>
     );
 });
@@ -251,7 +265,6 @@ export default CustomWidget;
 ```css
 .CustomWidget {
     padding: 1rem;
-    background-color: var(--primaryBackground, #ffffff);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
@@ -260,7 +273,6 @@ export default CustomWidget;
     margin: 0 0 0.25rem 0;
     font-size: 1.25rem;
     font-weight: 500;
-    color: var(--primaryForeground, #212121);
 }
 
 .CustomWidget-subtitle {
@@ -279,7 +291,6 @@ export default CustomWidget;
 
 .CustomWidget-body {
     margin: 0 0 0.25rem 0;
-    color: var(--primaryForeground, #212121);
     font-size: 0.875rem;
 }
 
@@ -434,3 +445,23 @@ export default function (registry: LibraryRegistry): void {
 This skill includes automated Python utilities in `scripts/`:
 - `scripts/initiate_agents_md.py`: Automatically creates or updates the target repository's `AGENTS.md` with official VertiGIS Studio Web SDK directives enclosed between `<!-- vertigis-web-sdk:start -->` and `<!-- vertigis-web-sdk:end -->`.
 - `scripts/crawl_vertigis_docs.py`: Crawl4AI script to refresh crawled documentation directly from the VertiGIS Developer Center.
+- `scripts/validate_web_sdk.py --path <project> [--format ansi|json|markdown] [--output <file>] [--strict] [--self-test]`: Standalone rule validator (Python 3.10+, standard library only). Every rule ID, severity, and remediation lives in `scripts/rules.json`; each entry cites the rule above it enforces. Exits 1 on any Critical violation (or any Major with `--strict`). `--self-test` runs the rule fixtures in `scripts/tests/` and checks that every code example in this skill passes.
+- `scripts/install_styling_audit.py [--target-dir <path>] [--force]`: Copies the static styling audit (`scripts/styling-audit/stylingAudit.ts` + `stylingAudit.test.ts`) into `<target>/src/utils/`. Requires `typescript` and `vitest` in the target project.
+
+### Styling Audit Test (`src/utils/stylingAudit.test.ts`)
+A Vitest suite that parses every TS/TSX file with the TypeScript compiler API and scans every CSS file under `src/`, checking 19 rules:
+
+| Group | Rules |
+| :--- | :--- |
+| Inline styling | `inline-static-style`, `mixed-class-and-style`, `inline-sx`, `typography-color-override`, `hardcoded-radius` |
+| Tokens | `inline-token-literal`, `token-fallback-drift` (compared against `src/tokens/ui.ts`) |
+| CSS hygiene | `orphan-css-class`, `duplicate-css-class`, `css-important`, `css-root-scope`, `css-mui-override`, `css-font-family`, `css-hardcoded-radius` |
+| MUI hygiene | `css-baseline`, `deep-mui-import`, `deprecated-input-props`, `theme-hardcoded-palette` |
+| Modularity | `file-too-large` (> 250 lines) |
+
+Workflow:
+1. **Install**: `python3 vertigis-web-sdk-skill/scripts/install_styling_audit.py --target-dir <repo>`.
+2. **Baseline**: `STYLE_AUDIT_REPORT=1 npx vitest run src/utils/stylingAudit.test.ts -t "prints a report"` prints counts per rule; set each `BASELINE` ceiling to its count. Counts may only go down.
+3. **Migrate**: add `STYLE_AUDIT_FILE=<path>` to list one file's or folder's violations with line numbers. Fix, re-run, then lower the ceilings.
+4. **Lock**: when only justified violations remain, list them in `KNOWN_EXCEPTIONS` (file → rules, each with a one-line reason) and set `ENFORCE_EXCEPTIONS_ONLY = true`, so any new violation in any file fails `pnpm test`.
+5. **Extend**: when adding a rule, add a fixture assertion in the `stylingAudit rule detectors` block first, then a `BASELINE` entry.

@@ -365,14 +365,6 @@ The host application shell (`.vsw-app`) strictly owns and injects the global fon
  */
 
 export const TYPOGRAPHY_TOKENS = {
-    // Font Family Stacks (Inherited from host shell by default)
-    fontFamily: {
-        /** Standard user interface typography stack (inherited) */
-        default: 'var(--defaultFont, "Roboto", "Helvetica", "Arial", sans-serif)',
-        /** Monospace stack for coordinates, code snippets, and JSON payloads */
-        monospace: 'var(--codeFont, "Roboto Mono", "Courier New", monospace)',
-    },
-
     // Modular Font Scale (Rem-based) with MUI Variant & T-Shirt Aliases
     fontSize: {
         // Standard MUI variants
@@ -480,56 +472,24 @@ export function surfaceMix(baseToken: string, overlayToken: string, tintPercent:
 ```tsx
 import * as React from "react";
 import { Box, Typography, Button } from "@mui/material";
-import { UI_TOKENS, TYPOGRAPHY_TOKENS, alphaMix, surfaceMix } from "../tokens";
+import { UI_TOKENS, alphaMix } from "../tokens";
+import "./FeatureCard.css";
 
 export function FeatureCard({ title, description, isSelected }: { title: string; description: string; isSelected: boolean }) {
     return (
-        <Box
-            sx={{
-                p: 2,
-                borderRadius: UI_TOKENS.shape.borderRadius,
-                border: `1px solid ${isSelected ? UI_TOKENS.accent.primary : UI_TOKENS.border.primary}`,
-                backgroundColor: isSelected
-                    ? surfaceMix(UI_TOKENS.surface.primary, UI_TOKENS.accent.primary, 10)
-                    : UI_TOKENS.surface.primary,
-                "&:hover": {
-                    backgroundColor: surfaceMix(UI_TOKENS.surface.primary, UI_TOKENS.accent.primary, 5),
-                    borderColor: UI_TOKENS.accent.hover,
-                },
-                transition: "background-color 150ms ease, border-color 150ms ease",
-            }}
-        >
-            <Typography
-                variant="h6"
-                sx={{
-                    fontFamily: TYPOGRAPHY_TOKENS.fontFamily.default,
-                    fontSize: TYPOGRAPHY_TOKENS.fontSize.lg,
-                    fontWeight: TYPOGRAPHY_TOKENS.fontWeight.medium,
-                    color: UI_TOKENS.text.primary,
-                    mb: 1,
-                }}
-            >
+        <Box className={isSelected ? "FeatureCard FeatureCard--selected" : "FeatureCard"}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
                 {title}
             </Typography>
-            <Typography
-                variant="body2"
-                sx={{
-                    fontFamily: TYPOGRAPHY_TOKENS.fontFamily.default,
-                    fontSize: TYPOGRAPHY_TOKENS.fontSize.sm,
-                    color: UI_TOKENS.text.secondary,
-                    mb: 2,
-                }}
-            >
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 {description}
             </Typography>
             <Button
                 variant="contained"
+                color="primary"
                 sx={{
-                    backgroundColor: UI_TOKENS.control.buttonBackground,
-                    color: UI_TOKENS.control.buttonForeground,
                     borderRadius: UI_TOKENS.shape.borderRadius,
                     "&:hover": {
-                        backgroundColor: UI_TOKENS.accent.hover,
                         boxShadow: `0 0 0 3px ${alphaMix(UI_TOKENS.accent.primary, 25)}`,
                     },
                 }}
@@ -538,6 +498,27 @@ export function FeatureCard({ title, description, isSelected }: { title: string;
             </Button>
         </Box>
     );
+}
+```
+
+The card's layout and states live in `FeatureCard.css`; `color-mix()` tints the inherited surface:
+
+```css
+.FeatureCard {
+    padding: 1rem;
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border-radius: var(--borderRadius, 4px);
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.FeatureCard:hover {
+    border-color: var(--primaryAccentHover, #005a91);
+    background-color: color-mix(in srgb, var(--primaryAccent, #007ac2) 5%, transparent);
+}
+
+.FeatureCard--selected {
+    border-color: var(--primaryAccent, #007ac2);
+    background-color: color-mix(in srgb, var(--primaryAccent, #007ac2) 10%, transparent);
 }
 ```
 
@@ -559,7 +540,7 @@ While CSS variables automatically update visual styles in CSS-in-JS and MUI `sx`
 For non-React, non-CSS contexts (such as web workers, canvas generators, and export services), `isDarkTheme()` provides a robust, 3-tier cascade:
 
 1. **Tier 1: DOM Attribute & Class Inspection**: Inspects `.vsw-app`, `document.documentElement`, and `document.body` for official VertiGIS and enterprise theme markers (`theme-dark`, `vsw-theme-dark`, `data-theme="dark"`).
-2. **Tier 2: Computed Background Color Luminance**: Computes the host root's background color via `window.getComputedStyle` and calculates perceived luminance using the ITU-R BT.709 standard (`(0.2126*R + 0.7152*G + 0.0722*B) / 255 < 0.5`).
+2. **Tier 2: Shell Token then Background Luminance**: Reads computed `--primaryBackground` first, then the host root's computed background color, and calculates perceived luminance using the ITU-R BT.709 standard (`(0.2126*R + 0.7152*G + 0.0722*B) / 255 < 0.5`). This prevents an OS dark preference from overriding a light VertiGIS shell.
 3. **Tier 3: OS / Media Query Preference**: Falls back to the user's operating system preference `(prefers-color-scheme: dark)`.
 
 ```typescript
@@ -598,32 +579,32 @@ export function isDarkTheme(): boolean {
         return false;
     }
 
-    // 2. Tier 2: Sample computed background color of root and measure ITU-R BT.709 luminance
+    // 2. Tier 2: Prefer the shell token, then sample the computed root background
     try {
-        const computedBg = window.getComputedStyle(rootElement).backgroundColor;
-        if (computedBg && computedBg !== "transparent") {
-            const rgbaMatch = computedBg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i);
-            if (rgbaMatch) {
-                const alpha = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1;
-                // Transparent or near-transparent backgrounds must not be evaluated as black;
-                // safely skip Tier 2 luminance measurement and fall through to Tier 3 media query
-                if (alpha >= 0.05) {
-                    const r = parseInt(rgbaMatch[1], 10);
-                    const g = parseInt(rgbaMatch[2], 10);
-                    const b = parseInt(rgbaMatch[3], 10);
+        const styles = window.getComputedStyle(rootElement);
+        const tokenTheme = inferDarkColor(styles.getPropertyValue("--primaryBackground"));
+        if (tokenTheme !== undefined) return tokenTheme;
 
-                    // ITU-R BT.709 relative perceived luminance formula
-                    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-                    return luminance < 0.5;
-                }
-            }
-        }
+        const backgroundTheme = inferDarkColor(styles.backgroundColor);
+        if (backgroundTheme !== undefined) return backgroundTheme;
     } catch {
         // Fallback to media query if DOM inspection encounters permission/context issues
     }
 
     // 3. Tier 3: Fallback to OS / browser color scheme preference
-    return Boolean(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    return Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+}
+
+function inferDarkColor(value: string): boolean | undefined {
+    const color = value.trim();
+    const hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)?.[1];
+    const rgb = color.match(/^rgba?\(\s*([\d.]+)[, ]+\s*([\d.]+)[, ]+\s*([\d.]+)/i);
+    const channels = hex
+        ? [0, 2, 4].map(index => parseInt((hex.length === 3 ? [...hex].map(c => c + c).join("") : hex).slice(index, index + 2), 16))
+        : rgb?.slice(1, 4).map(Number);
+    if (!channels?.every(Number.isFinite)) return undefined;
+    const [r, g, b] = channels;
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
 }
 ```
 
@@ -728,79 +709,51 @@ Standard MUI controls (`<Radio>`, `<Checkbox>`, `<Button>`, `<Typography>`, `<Di
 
 ```typescript
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import * as React from "react";
+import { type FC, type ReactNode, useMemo } from "react";
 import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
 
-export const VertiGisThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const isDark = useIsDarkTheme();
+export function getVertiGisPortalContainer(): HTMLElement | null {
+    if (typeof document === "undefined") return null;
+    return document.querySelector<HTMLElement>(".vsw-app") ?? document.body;
+}
 
-    const theme = React.useMemo(
-        () =>
-            createTheme({
-                palette: {
-                    mode: isDark ? "dark" : "light",
-                    background: {
-                        default: isDark ? "#1e1e1e" : "#ffffff",
-                        paper: isDark ? "#252526" : "#ffffff",
-                    },
-                    text: {
-                        primary: isDark ? "#ffffff" : "#212121",
-                        secondary: isDark ? "rgba(255, 255, 255, 0.7)" : "#666666",
-                    },
-                },
-                spacing: 5, // VertiGIS Meridian compact 5px grid
-                typography: {
-                    fontFamily: 'var(--defaultFont, "Segoe UI", "Helvetica Neue", "Roboto", sans-serif)',
-                },
-                components: {
-                    MuiCheckbox: {
-                        defaultProps: { size: "small" },
-                        styleOverrides: {
-                            root: {
-                                "&.Mui-checked": {
-                                    color: "var(--primaryAccent, #007ac2)",
-                                },
-                            },
-                        },
-                    },
-                    MuiRadio: {
-                        defaultProps: { size: "small" },
-                        styleOverrides: {
-                            root: {
-                                "&.Mui-checked": {
-                                    color: "var(--primaryAccent, #007ac2)",
-                                },
-                            },
-                        },
-                    },
-                    MuiButton: {
-                        defaultProps: { size: "small" },
-                        styleOverrides: {
-                            root: {
-                                textTransform: "none",
-                                fontWeight: 600,
-                            },
-                        },
-                    },
-                    MuiTypography: {
-                        styleOverrides: {
-                            root: {
-                                color: "inherit",
-                            },
-                        },
-                    },
-                },
-            }),
-        [isDark]
-    );
+export function createVertiGisMuiTheme(isDark: boolean) {
+    return createTheme({
+        palette: { mode: isDark ? "dark" : "light" },
+        spacing: 5,
+        components: {
+            MuiPopover: {
+                defaultProps: { container: getVertiGisPortalContainer },
+            },
+            MuiCheckbox: {
+                defaultProps: { size: "small" },
+                styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } },
+            },
+            MuiRadio: {
+                defaultProps: { size: "small" },
+                styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } },
+            },
+            MuiButton: {
+                defaultProps: { size: "small" },
+                styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
+            },
+        },
+    });
+}
+
+export const VertiGisThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
+    const isDark = useIsDarkTheme();
+    const theme = useMemo(() => createVertiGisMuiTheme(isDark), [isDark]);
 
     return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
 };
 ```
 
+`MuiPopover` containment is mandatory because MUI menus render through portals. Keeping the portal inside `.vsw-app` preserves VertiGIS token inheritance and stacking context. Menu text, hover, and selected states should remain semantic MUI palette states; never force token colours with `!important`.
+
 ##### The Crash Anti-Pattern: Why `augmentColor()` Fails
 Passing raw CSS variables into `palette.primary.main` or `palette.error.main` causes MUI to crash:
-```typescript
+```typescript bad
 // ❌ CRASH ANTI-PATTERN: Passing CSS variables into palette.*.main
 export function createBrokenMuiTheme(): Theme {
     return createTheme({
@@ -823,7 +776,7 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
    ```tsx
    // ✅ Standardized MUI v7 slotProps:
    <Dialog slotProps={{ paper: { className: "MonitoringReportDialog-paper" } }} ... />
-   <TextField slotProps={{ input: { readOnly: true } }} ... />
+   <TextField label="Report title" slotProps={{ input: { readOnly: true } }} ... />
    ```
 3. **Semantic Palette Props over Custom CSS**: Leverage built-in typography palette awareness rather than micro-injecting CSS classes:
    ```tsx
@@ -850,10 +803,8 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
 For non-MUI DOM elements (`div`, `header`, `aside`, card chrome, borders, scroll containers), consume official host CSS design tokens directly in co-located namespaced CSS (`ComponentName.css`):
 ```css
 .MonitoringCard {
-    background-color: var(--primaryBackground, #ffffff);
     border: var(--borderWidth, 1px) solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
-    color: var(--primaryForeground, #212121);
 }
 ```
 
@@ -920,16 +871,13 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
       align-items: center;
       justify-content: space-between;
       padding: 0.75rem 1rem;
-      background-color: var(--primaryBackground, #ffffff);
       border-bottom: 1px solid var(--primaryBorder, #e0e0e0);
   }
 
   .ListHeader-title {
       margin: 0;
-      font-family: var(--defaultFont);
       font-size: 1rem;
       font-weight: 500;
-      color: var(--primaryForeground, #212121);
   }
 
   .ListHeader-badge {
@@ -957,7 +905,7 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
 ##### The Anti-Pattern: Shadow Tokens & Multi-Hop Indirection
 A common pitfall when authoring custom widget CSS is creating local shadow variables or re-aliasing official VertiGIS design tokens through intermediate layers:
 
-```css
+```css bad
 /* ❌ DANGEROUS ANTI-PATTERN: Multi-hop indirection & global :root pollution */
 :root {
     --color-background: var(--primaryBackground);
@@ -988,8 +936,6 @@ Consume the official VertiGIS host CSS variables directly in component rules, al
 ```css
 /* ✅ CLEAN ARCHITECTURE: Direct token consumption in namespaced CSS */
 .MonitoringCard {
-    background: var(--primaryBackground, #ffffff);
-    color: var(--primaryForeground, #212121);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
@@ -1013,12 +959,39 @@ Consume the official VertiGIS host CSS variables directly in component rules, al
 ### 6. Non-CSS Renderers Integration Patterns
 
 #### A. Plotly.js Dynamic Theming
-When embedding charting in GIS widgets, synchronize the chart template, axes, and background colors with `useIsDarkTheme()`:
+When embedding charting in GIS widgets, synchronize the chart template, axes, and background colors with `useIsDarkTheme()`. Renderer colors live in a token map, keyed by theme mode:
+
+`src/tokens/chart.ts`
+```ts
+export const CHART_TOKENS = {
+    light: {
+        font: "#212121",
+        grid: "#e0e0e0",
+        axisLine: "#cccccc",
+        series: "#007ac2",
+        canvasSurface: "#ffffff",
+        canvasGrid: "#eeeeee",
+        canvasSeries: "#007ac2",
+        canvasLabel: "#666666",
+    },
+    dark: {
+        font: "#f5f5f5",
+        grid: "#333333",
+        axisLine: "#555555",
+        series: "#29b6f6",
+        canvasSurface: "#1e1e1e",
+        canvasGrid: "#333333",
+        canvasSeries: "#4fc3f7",
+        canvasLabel: "#aaaaaa",
+    },
+} as const;
+```
 
 ```tsx
 import * as React from "react";
 import Plot from "react-plotly.js";
 import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
+import { CHART_TOKENS } from "../tokens/chart";
 
 interface ElevationChartProps {
     distances: number[];
@@ -1027,6 +1000,7 @@ interface ElevationChartProps {
 
 export function ElevationChart({ distances, elevations }: ElevationChartProps): React.ReactElement {
     const isDark = useIsDarkTheme();
+    const colors = isDark ? CHART_TOKENS.dark : CHART_TOKENS.light;
 
     const layout = React.useMemo(() => ({
         template: isDark ? "plotly_dark" : "plotly_white",
@@ -1034,21 +1008,21 @@ export function ElevationChart({ distances, elevations }: ElevationChartProps): 
         plot_bgcolor: "transparent",
         margin: { t: 24, r: 20, l: 40, b: 36 },
         font: {
-            color: isDark ? "#f5f5f5" : "#212121",
+            color: colors.font,
             family: "Roboto, Helvetica, Arial, sans-serif",
             size: 12,
         },
         xaxis: {
-            gridcolor: isDark ? "#333333" : "#e0e0e0",
-            linecolor: isDark ? "#555555" : "#cccccc",
+            gridcolor: colors.grid,
+            linecolor: colors.axisLine,
             title: "Distance (m)",
         },
         yaxis: {
-            gridcolor: isDark ? "#333333" : "#e0e0e0",
-            linecolor: isDark ? "#555555" : "#cccccc",
+            gridcolor: colors.grid,
+            linecolor: colors.axisLine,
             title: "Elevation (m)",
         },
-    }), [isDark]);
+    }), [isDark, colors]);
 
     return (
         <Plot
@@ -1057,7 +1031,7 @@ export function ElevationChart({ distances, elevations }: ElevationChartProps): 
                 y: elevations,
                 type: "scatter",
                 mode: "lines",
-                line: { color: isDark ? "#29b6f6" : "#007ac2", width: 2 },
+                line: { color: colors.series, width: 2 },
             }]}
             layout={layout}
             useResizeHandler
@@ -1072,6 +1046,7 @@ Canvas graphics cannot read CSS custom properties. Use `isDarkTheme()` to sample
 
 ```typescript
 import { isDarkTheme } from "../utils/isDarkTheme";
+import { CHART_TOKENS } from "../tokens/chart";
 
 export function renderProfileCanvas(
     canvas: HTMLCanvasElement,
@@ -1080,16 +1055,16 @@ export function renderProfileCanvas(
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const isDark = isDarkTheme();
+    const colors = isDarkTheme() ? CHART_TOKENS.dark : CHART_TOKENS.light;
     const { width, height } = canvas;
 
     // 1. Clear with transparent or surface fill
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = isDark ? "#1e1e1e" : "#ffffff";
+    ctx.fillStyle = colors.canvasSurface;
     ctx.fillRect(0, 0, width, height);
 
     // 2. Draw coordinate gridlines
-    ctx.strokeStyle = isDark ? "#333333" : "#eeeeee";
+    ctx.strokeStyle = colors.canvasGrid;
     ctx.lineWidth = 1;
     for (let x = 0; x < width; x += 40) {
         ctx.beginPath();
@@ -1099,7 +1074,7 @@ export function renderProfileCanvas(
     }
 
     // 3. Draw GIS profile path
-    ctx.strokeStyle = isDark ? "#4fc3f7" : "#007ac2";
+    ctx.strokeStyle = colors.canvasSeries;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     profilePoints.forEach((pt, idx) => {
@@ -1109,7 +1084,7 @@ export function renderProfileCanvas(
     ctx.stroke();
 
     // 4. Render axis labels
-    ctx.fillStyle = isDark ? "#aaaaaa" : "#666666";
+    ctx.fillStyle = colors.canvasLabel;
     ctx.font = "11px Roboto, sans-serif";
     ctx.fillText("0 m", 8, height - 8);
     ctx.fillText(`${width} m`, width - 40, height - 8);
@@ -1228,7 +1203,7 @@ When designing or refactoring a VertiGIS component, use the following heuristic 
 
 The following example illustrates the common anti-pattern where layout, state, API calls, geometry calculations, modal dialogs, and styling are crammed into a single 400-line file:
 
-```tsx
+```tsx bad
 // ❌ ANTI-PATTERN: Monolithic "God Component" (~400 lines)
 // Everything crammed into a single file: state, fetch, formatting, modals, and JSX.
 import * as React from "react";
@@ -1407,8 +1382,6 @@ export default InspectionDashboard;
     flex-direction: column;
     height: 100%;
     padding: 1rem;
-    background-color: var(--primaryBackground, #ffffff);
-    color: var(--primaryForeground, #212121);
 }
 ```
 
@@ -1472,7 +1445,7 @@ export function useDashboardData(model: InspectionDashboardModel) {
 ```tsx
 import * as React from "react";
 import { Box, Typography, Button } from "@mui/material";
-import { UI_TOKENS, TYPOGRAPHY_TOKENS } from "../../../tokens";
+import "./DashboardHeader.css";
 
 interface DashboardHeaderProps {
     title: string;
@@ -1481,34 +1454,25 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ title, onExportClick }: DashboardHeaderProps): React.ReactElement {
     return (
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-            <Typography
-                variant="h6"
-                sx={{
-                    fontFamily: TYPOGRAPHY_TOKENS.fontFamily.default,
-                    fontSize: TYPOGRAPHY_TOKENS.fontSize.lg,
-                    fontWeight: TYPOGRAPHY_TOKENS.fontWeight.bold,
-                    color: UI_TOKENS.text.primary,
-                }}
-            >
+        <Box className="DashboardHeader">
+            <Typography variant="h6">
                 {title}
             </Typography>
-            <Button
-                variant="contained"
-                onClick={onExportClick}
-                sx={{
-                    backgroundColor: UI_TOKENS.control.buttonBackground,
-                    color: UI_TOKENS.control.buttonForeground,
-                    borderRadius: UI_TOKENS.shape.borderRadius,
-                    "&:hover": {
-                        backgroundColor: UI_TOKENS.accent.hover,
-                    },
-                }}
-            >
+            <Button variant="contained" color="primary" onClick={onExportClick}>
                 Export
             </Button>
         </Box>
     );
+}
+```
+
+`components/DashboardHeader.css`:
+```css
+.DashboardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
 ```
 

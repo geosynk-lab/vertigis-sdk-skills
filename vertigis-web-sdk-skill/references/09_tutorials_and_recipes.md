@@ -76,7 +76,9 @@ import {
     LayoutElement,
     LayoutElementProperties,
 } from "@vertigis/web/components";
+import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { DashboardWidgetModel } from "./DashboardWidgetModel";
+import "./DashboardWidget.css";
 
 interface DashboardWidgetProps extends LayoutElementProperties<DashboardWidgetModel> {}
 
@@ -84,25 +86,32 @@ const DashboardWidget = observer(function DashboardWidget(props: DashboardWidget
     const { model } = props;
     return (
         <LayoutElement {...props}>
-            <Box sx={{ 
-                p: 2, 
-                backgroundColor: "var(--secondaryBackground)",
-                borderTop: "4px solid var(--primaryAccent)",
-                borderRadius: "4px"
-            }}>
-                <Typography variant="h6" sx={{ color: "var(--primaryForeground)", mb: 1 }}>
-                    {model.title}
-                </Typography>
-                <Divider sx={{ borderColor: "var(--primaryBorder)", my: 1 }} />
-                <Typography variant="body2" sx={{ color: "var(--secondaryForeground)" }}>
-                    Auto-refresh interval: {model.refreshIntervalSeconds}s
-                </Typography>
-            </Box>
+            <ErrorBoundary fallbackMessage="Dashboard widget failed to load.">
+                <Box className="DashboardWidget">
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                        {model.title}
+                    </Typography>
+                    <Divider sx={{ borderColor: "var(--primaryBorder)", my: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                        Auto-refresh interval: {model.refreshIntervalSeconds}s
+                    </Typography>
+                </Box>
+            </ErrorBoundary>
         </LayoutElement>
     );
 });
 
 export default DashboardWidget;
+```
+
+```css
+/* src/components/DashboardWidget/DashboardWidget.css */
+.DashboardWidget {
+    padding: 1rem;
+    border-top: 4px solid var(--primaryAccent, #007ac2);
+    border-radius: var(--borderRadius, 4px);
+    background-color: var(--secondaryBackground, #f5f5f5);
+}
 ```
 
 ### 3. Registration (`src/index.ts`)

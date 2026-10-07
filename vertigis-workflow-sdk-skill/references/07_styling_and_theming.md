@@ -46,7 +46,7 @@ All text rendered inside custom form elements must use `@mui/material` `<Typogra
 | `subtitle2` | Input field group subtitle | Secondary grouping title, sub-label | `var(--secondaryForeground, #666666)` |
 | `body1` | Primary form text & interactive labels | Checkbox labels, radio option text, primary values | `var(--primaryForeground, #212121)` |
 | `body2` | Secondary field text & instructions | Helper text, instructions, secondary field data | `var(--secondaryForeground, #666666)` |
-| `caption` | Validation hints & metadata microcopy | Character count, units (e.g. "meters"), field hints | `var(--secondaryForeground, #666666)` / `var(--alertRedForeground, #d32f2f)` |
+| `caption` | Validation hints & metadata microcopy | Character count, units (e.g. "meters"), field hints | `var(--secondaryForeground, #666666)` / `var(--errorHelperTextForeground, #b22222)` |
 | `overline` | Badges & category caps | "REQUIRED", "OPTIONAL", status indicators | `var(--primaryForeground, #212121)` / Status tokens |
 
 ### Typography Rules & Best Practices
@@ -60,7 +60,7 @@ All text rendered inside custom form elements must use `@mui/material` `<Typogra
 3. **Semantic Typography Palette Props**:
    - Leverage MUI's built-in semantic palette props on `<Typography>` rather than micro-injecting `sx={{ color: ... }}`:
      - Secondary / Muted / Helper text: `<Typography variant="caption" color="text.secondary">` or `<Typography variant="body2" color="text.secondary">`
-     - Primary form text: `<Typography color="text.primary">` (or default)
+     - Primary form text: `<Typography>` with no `color` prop (inherits the host foreground)
      - Inverted / Dark surface text: `<Typography color="inherit">`
      - Validation error text: `<Typography color="error">` or status token
    - NEVER write bespoke inline `sx={{ color: ... }}` solely to set secondary or helper text colors. Standard `<Typography color="text.secondary">` automatically adapts to light and dark themes.
@@ -100,14 +100,7 @@ src/elements/<ElementName>/tokens/
 ### UI Design Tokens (`tokens/ui.ts`)
 
 ```typescript
-/**
- * UI Design Tokens for VertiGIS Studio Workflow Form Elements.
- * Maps official VertiGIS CSS custom properties with safe WCAG AA fallbacks.
- *
- * All tokens provide guaranteed defaults for isolated testing, Storybook,
- * and initial shell boot before the branding service injects runtime variables.
- */
-
+/** UI Design Tokens: VertiGIS CSS custom properties with safe WCAG AA fallbacks. */
 export const UI_TOKENS = {
     // Surface & Background Colors
     surface: {
@@ -373,12 +366,6 @@ Typography is inherited natively from the host shell (`.vsw-app` / Workflow runn
  */
 
 export const TYPOGRAPHY_TOKENS = {
-    fontFamily: {
-        /** Primary UI font stack inherited from the VertiGIS shell */
-        primary: "var(--defaultFont, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)",
-        /** Monospace stack for coordinates, JSON payloads, and identifiers */
-        mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-    },
     fontSize: {
         h6: "1.25rem",        // 20px
         subtitle1: "1rem",     // 16px
@@ -707,7 +694,7 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
             },
         },
         typography: {
-            fontFamily: TYPOGRAPHY_TOKENS.fontFamily.primary,
+            fontFamily: "inherit",
             fontSize: 14, // Minimum 14px for outdoor field readability
         },
         shape: {
@@ -813,7 +800,7 @@ To ensure form elements run safely across VertiGIS Web and Mobile hosts:
 2. **Standardized `slotProps` API**: MUI v7 deprecated nested component props (`inputProps`, `InputProps`, `BackdropProps`, `PaperProps`). Always use standardized `slotProps`:
    ```tsx
    // ✅ Standardized MUI v7 slotProps:
-   <TextField slotProps={{ input: { readOnly: !enabled || readOnly } }} ... />
+   <TextField label={label} slotProps={{ input: { readOnly: !enabled || readOnly } }} ... />
    <DatePicker slotProps={{ textField: { size: "small" } }} ... />
    ```
 3. **Semantic Palette Props over Custom `sx`**: Leverage built-in typography palette awareness rather than micro-injecting `sx={{ color: ... }}`:
@@ -832,7 +819,6 @@ To ensure form elements run safely across VertiGIS Web and Mobile hosts:
            gap: 1.5,
            p: 2,
            borderRadius: "var(--borderRadius, 4px)",
-           backgroundColor: "var(--primaryBackground, #ffffff)",
        },
    };
    ```
@@ -851,7 +837,7 @@ When developing custom workflow form elements with MUI (`DatePicker`, `TimePicke
 3. **Bloats Code with Brittle Selectors**: Composite controls like `<DatePicker>` comprise calendar modals, header arrows, year grids, and day buttons. Micro-styling them via CSS selectors creates brittle boilerplate that breaks across MUI releases.
 
 #### What NOT to Do (Anti-Pattern)
-```tsx
+```tsx bad
 // ❌ WRONG: Micro-injecting tokens into internal MUI subcomponents
 <DatePicker
     value={value}
@@ -884,7 +870,7 @@ Wrap your form element in `VertiGisThemeProvider`. Standard MUI controls inherit
                     size: "small",
                     fullWidth: true,
                     disabled: !props.enabled,
-                    inputProps: { readOnly: props.readOnly },
+                    slotProps: { input: { readOnly: props.readOnly } },
                 },
             }}
         />
@@ -895,7 +881,7 @@ Wrap your form element in `VertiGisThemeProvider`. Standard MUI controls inherit
             size="small"
             fullWidth
             disabled={!props.enabled}
-            inputProps={{ readOnly: props.readOnly }}
+            slotProps={{ input: { readOnly: props.readOnly } }}
         />
     </Box>
 </VertiGisThemeProvider>
@@ -941,7 +927,7 @@ Form elements receive standard props from the workflow engine. Map them cleanly 
    - Must be distinctly visually different from `disabled`.
    - `readOnly` elements remain selectable and fully legible in high contrast (`color: "var(--primaryForeground, #212121)"`), with a subtle non-editable background (`backgroundColor: "var(--secondaryBackground, #f5f5f5)"`).
 3. **Validation Errors**:
-   - When input validation fails, highlight borders with `var(--alertRedForeground, #d32f2f)` and render the error message with `<Typography variant="caption" sx={{ color: "var(--alertRedForeground, #d32f2f)" }}>`.
+   - When input validation fails, highlight borders with `var(--errorHelperTextForeground, #b22222)` and render the error message with `<Typography variant="caption" color="error">`.
 
 ---
 
@@ -1008,23 +994,10 @@ function InspectionNotesView(props: InspectionNotesProps) {
         >
             {/* Form Element Header */}
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                <Typography
-                    variant="subtitle1"
-                    sx={{
-                        color: tokens.ui.text.primary,
-                        fontFamily: tokens.typography.fontFamily.primary,
-                        fontWeight: tokens.typography.fontWeight.semibold,
-                    }}
-                >
+                <Typography variant="subtitle1">
                     {label}
                 </Typography>
-                <Typography
-                    variant="caption"
-                    sx={{
-                        color: isOverLimit ? tokens.ui.status.errorFg : tokens.ui.text.secondary,
-                        fontWeight: tokens.typography.fontWeight.medium,
-                    }}
-                >
+                <Typography variant="caption" color={isOverLimit ? "error" : "text.secondary"}>
                     {localText.length} / {maxLength}
                 </Typography>
             </Stack>
@@ -1038,15 +1011,17 @@ function InspectionNotesView(props: InspectionNotesProps) {
                 value={localText}
                 onChange={handleChange}
                 placeholder={placeholder}
-                InputProps={{
-                    readOnly,
-                    sx: {
-                        color: tokens.ui.text.primary,
-                        backgroundColor: readOnly
-                            ? tokens.ui.surface.secondary
-                            : tokens.surfaceMix(tokens.ui.text.primary, tokens.ui.surface.primary, isDark ? 4 : 0),
-                        minHeight: tokens.ui.touch.minHeight,
+                slotProps={{
+                    input: {
+                        readOnly,
+                        sx: {
+                            backgroundColor: readOnly
+                                ? tokens.ui.surface.secondary
+                                : tokens.surfaceMix(tokens.ui.text.primary, tokens.ui.surface.primary, isDark ? 4 : 0),
+                            minHeight: tokens.ui.touch.minHeight,
+                        },
                     },
+                    htmlInput: { "aria-label": label },
                 }}
             />
 
@@ -1054,10 +1029,10 @@ function InspectionNotesView(props: InspectionNotesProps) {
             {isOverLimit && (
                 <Typography
                     variant="caption"
+                    color="error"
                     sx={{
                         display: "block",
                         mt: 0.5,
-                        color: tokens.ui.status.errorFg,
                     }}
                 >
                     Character limit exceeded. Please shorten your notes before submitting.

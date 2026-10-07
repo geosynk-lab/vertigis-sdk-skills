@@ -230,7 +230,7 @@ import { Typography } from "@mui/material";
 export function CustomWidget() {
     const { translate } = useI18n();
     return (
-        <Typography variant="h6" sx={{ color: "var(--primaryForeground)" }}>
+        <Typography variant="h6">
             {translate("custom-widget-title")}
         </Typography>
     );

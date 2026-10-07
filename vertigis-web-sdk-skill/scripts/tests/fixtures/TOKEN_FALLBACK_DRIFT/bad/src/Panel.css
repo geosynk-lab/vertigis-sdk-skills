@@ -1,0 +1,3 @@
+.my-widget__panel {
+    border-color: var(--primaryBorder, #eeeeee);
+}

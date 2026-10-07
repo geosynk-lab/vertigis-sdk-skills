@@ -93,6 +93,8 @@ export interface RatingElementProps extends FormElementProps<number> {
     maxRating?: number;
 }
 
+const styles = { root: { py: 1 } };
+
 function RatingElement(props: RatingElementProps): React.ReactElement {
     const {
         value = 0,
@@ -111,7 +113,7 @@ function RatingElement(props: RatingElementProps): React.ReactElement {
     };
 
     return (
-        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ py: 1 }} role="group" aria-label="Star Rating">
+        <Stack direction="row" spacing={0.5} alignItems="center" sx={styles.root} role="group" aria-label="Star Rating">
             {Array.from({ length: maxRating }).map((_, index) => {
                 const starNumber = index + 1;
                 const isActive = starNumber <= (value ?? 0);
@@ -139,7 +141,7 @@ function RatingElement(props: RatingElementProps): React.ReactElement {
                     </IconButton>
                 );
             })}
-            <Typography variant="body2" sx={{ color: "var(--secondaryForeground)", ml: 1 }} aria-live="polite">
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }} aria-live="polite">
                 {value ? `${value} / ${maxRating}` : "Unrated"}
             </Typography>
         </Stack>

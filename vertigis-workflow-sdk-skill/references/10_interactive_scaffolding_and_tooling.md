@@ -149,7 +149,7 @@ python3 vertigis-workflow-sdk-skill/scripts/initiate_agents_md.py --target-dir /
   - Primary text: `color: "var(--primaryForeground, #212121)"`
   - Secondary / muted text: `color: "var(--secondaryForeground, #666666)"`
   - Inactive / disabled text: `color: "var(--disabledForeground, #9e9e9e)"`
-  - Validation error text: `color: "var(--alertRedForeground, #d32f2f)"`
+  - Validation error text: `<Typography color="error">`, or `var(--errorHelperTextForeground, #b22222)` in CSS
 - **Font Family**: Use `fontFamily: "var(--defaultFont, sans-serif)"` (inherited automatically via MUI theme).
 - **Mobile & Field Form Readability**: Ensure minimum text sizing (at least 14px / `body2` on mobile screens) and comfortable line-height for readability in high-glare outdoor environments.
 
@@ -184,7 +184,7 @@ python3 vertigis-workflow-sdk-skill/scripts/initiate_agents_md.py --target-dir /
 - **State Token Wiring**:
   - `enabled`: Map `!enabled` to `disabled` styling with `color: "var(--disabledForeground, #9e9e9e)"`.
   - `readOnly`: Display with a subtle non-editable background distinctly different from disabled (`readOnly` remains legible and selectable).
-  - Validation errors: Display error borders and messages using `var(--alertRedForeground, #d32f2f)`.
+  - Validation errors: Display error borders and messages using `var(--errorHelperTextForeground, #b22222)`.
 
 ## 5. Architecture & State Persistence
 - **State Persistence (Surviving Tab Remounts)**: Form element state MUST be saved via `props.setValue()` or `props.setProperty()`. NEVER rely on ephemeral local React `useState` for critical business data, as form elements unmount and remount when users navigate between form tabs or workflow steps.

@@ -1,0 +1,12 @@
+.my-widget__card {
+    border-radius: var(--borderRadius, 4px);
+}
+.my-widget__pill {
+    border-radius: 9999px;
+}
+.my-widget__dot {
+    border-radius: 50%;
+}
+.my-widget__flat {
+    border-radius: 0;
+}

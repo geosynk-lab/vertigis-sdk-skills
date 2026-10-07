@@ -1,0 +1,3 @@
+.my-widget {
+    --my-widget-bg: var(--primaryBackground, #ffffff);
+}

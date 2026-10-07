@@ -1,0 +1,3 @@
+.my-widget__panel + .my-widget__panel {
+    gap: 4px;
+}

@@ -1,0 +1,5 @@
+.my-widget {
+    --my-widget-row-height: 32px;
+    height: var(--my-widget-row-height);
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+}

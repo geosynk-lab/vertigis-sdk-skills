@@ -1,0 +1,4 @@
+.Panel-hint {
+    background-color: var(--primaryAccentLight, #e3eff9);
+    color: var(--secondaryForeground, #575757);
+}

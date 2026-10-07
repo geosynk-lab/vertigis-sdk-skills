@@ -1,0 +1,8 @@
+.Panel-badge {
+    background-color: var(--primaryAccent, #1a72c4);
+    color: var(--emphasizedButtonForeground, #ffffff);
+}
+
+.Panel-badge-count {
+    color: var(--emphasizedButtonForeground, #ffffff);
+}

@@ -1,0 +1,5 @@
+/* was #ff0000 */
+.my-widget__panel {
+    border: 1px solid var(--primaryBorder, #e0e0e0);
+    background: color-mix(in srgb, var(--primaryAccent, #007ac2) 20%, transparent);
+}

@@ -145,17 +145,10 @@ export function StatusBar({ statusText, isProcessing }: StatusBarProps) {
                 borderRadius: tokens.ui.shape.borderRadius,
             }}
         >
-            <Typography
-                variant="caption"
-                sx={{
-                    color: tokens.ui.text.secondary,
-                    fontFamily: tokens.typography.fontFamily.primary,
-                    fontWeight: tokens.typography.fontWeight.medium,
-                }}
-            >
+            <Typography variant="caption" color="text.secondary">
                 {statusText}
             </Typography>
-            {isProcessing && <LinearProgress color="primary" sx={{ borderRadius: 1 }} />}
+            {isProcessing && <LinearProgress color="primary" sx={{ borderRadius: tokens.ui.shape.borderRadius }} />}
         </Stack>
     );
 }
@@ -184,13 +177,7 @@ export function ActionButtons({ enabled, readOnly, onClear, onSubmit }: ActionBu
                 disabled={!isInteractive}
                 onClick={onClear}
                 sx={{
-                    borderColor: tokens.ui.border.primary,
-                    color: tokens.ui.text.primary,
                     minHeight: tokens.ui.touch.minHeight, // 44px mobile touch target
-                    "&:hover": {
-                        borderColor: tokens.ui.accent.primary,
-                        backgroundColor: tokens.alphaMix(tokens.ui.accent.primary, 8),
-                    },
                 }}
             >
                 Clear Sketch
@@ -200,12 +187,7 @@ export function ActionButtons({ enabled, readOnly, onClear, onSubmit }: ActionBu
                 disabled={!isInteractive}
                 onClick={onSubmit}
                 sx={{
-                    backgroundColor: tokens.ui.control.buttonBackground,
-                    color: tokens.ui.control.buttonForeground,
                     minHeight: tokens.ui.touch.minHeight,
-                    "&:hover": {
-                        backgroundColor: tokens.ui.accent.hover,
-                    },
                 }}
             >
                 Accept Geometry
@@ -267,21 +249,22 @@ export class FormElementErrorBoundary extends React.Component<ErrorBoundaryProps
                     sx={{
                         p: 2,
                         backgroundColor: tokens.ui.status.errorBg,
+                        color: tokens.ui.status.errorFg,
                         border: `1px solid ${tokens.ui.status.errorBorder}`,
                         borderRadius: tokens.ui.shape.borderRadius,
                     }}
                 >
-                    <Typography variant="subtitle2" sx={{ color: tokens.ui.status.errorFg, fontWeight: "bold" }}>
+                    <Typography variant="subtitle2" color="inherit">
                         Widget Display Error
                     </Typography>
-                    <Typography variant="caption" sx={{ color: tokens.ui.text.primary, display: "block", my: 1 }}>
+                    <Typography variant="caption" color="inherit" sx={{ display: "block", my: 1 }}>
                         {this.state.errorMessage}
                     </Typography>
                     <Button
                         size="small"
                         variant="outlined"
+                        color="inherit"
                         onClick={this.handleReset}
-                        sx={{ color: tokens.ui.status.errorFg, borderColor: tokens.ui.status.errorBorder }}
                     >
                         Retry Widget
                     </Button>
