@@ -1,5 +1,5 @@
 .Panel {
-    padding: 8px;
+    padding: var(--spacingSm, 8px);
 }
 
 .Panel-header {

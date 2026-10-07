@@ -13,7 +13,7 @@
 - [3. Dynamic Dual-Theme System (Light / Dark Mode Adaptation)](#3-dynamic-dual-theme-system-light--dark-mode-adaptation)
   - [1. The Reactive Theme Hook (`src/hooks/useIsDarkTheme.ts`)](#1-the-reactive-theme-hook-srchooksuseisdarkthemets)
   - [2. Standalone Theme Utility (`src/utils/themeDetection.ts`)](#2-standalone-theme-utility-srcutilsthemedetectionts)
-- [4. Material UI Theme Integration (`tokens/muiTheme.ts`)](#4-material-ui-theme-integration-tokensmuithemet)
+- [4. Material UI Theme Integration (`tokens/muiTheme.tsx`)](#4-material-ui-theme-integration-tokensmuithemetsx)
 - [5. Mobile Touch Targets & Outdoor Field Guidelines](#5-mobile-touch-targets--outdoor-field-guidelines)
   - [Mobile Touch Targets (Minimum 44x44px)](#mobile-touch-targets-minimum-44x44px)
   - [Outdoor Field Contrast & Sunlight Readability](#outdoor-field-contrast--sunlight-readability)
@@ -80,7 +80,7 @@ The design token subsystem is organized into a dedicated `tokens/` directory wit
 src/elements/<ElementName>/tokens/
 ├── ui.ts             # Surface, text, border, accent, control, status, and touch tokens
 ├── typography.ts     # Font stacks, font scale, weights, and line heights
-├── muiTheme.ts       # MUI Theme factory and VertiGisThemeProvider bridge
+├── muiTheme.tsx      # MUI Theme factory and VertiGisThemeProvider bridge
 └── index.ts          # Central barrel export and color-mix runtime utilities
 ```
 
@@ -334,6 +334,10 @@ export const UI_TOKENS = {
         shadowPrimary: "var(--shadowPrimary, 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24))",
         /** Elevated overlay / dialog shadow */
         shadowElevated: "var(--shadowElevated, 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23))",
+    },
+    spacing: {
+        xxs: "var(--spacingXxs, 2px)", xs: "var(--spacingXs, 4px)", sm: "var(--spacingSm, 8px)",
+        md: "var(--spacingMd, 12px)", lg: "var(--spacingLg, 16px)", xl: "var(--spacingXl, 24px)",
     },
 
     // Mobile Field Touch Dimensions (WCAG 2.5.5 / 2.5.8)
@@ -643,11 +647,11 @@ export function isDarkTheme(): boolean {
 ---
 
 <span id="mui-theme-integration"></span>
-## 4. Material UI Theme Integration (`tokens/muiTheme.ts`)
+## 4. Material UI Theme Integration (`tokens/muiTheme.tsx`)
 
 To ensure standard MUI composite controls (Sliders, DatePickers, ToggleButtons, AutoCompletes) automatically adopt VertiGIS shell colors without verbose `sx` overrides on every leaf node, use a theme factory:
 
-```typescript
+```tsx
 import { createTheme, Theme, ThemeProvider } from "@mui/material/styles";
 import * as React from "react";
 import { UI_TOKENS } from "./ui";

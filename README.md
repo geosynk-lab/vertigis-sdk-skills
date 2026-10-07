@@ -177,7 +177,7 @@ Teaches the AI how to build custom activities and form elements in C# for VertiG
 
 ## ✅ Rule Validation
 
-The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (45 Web rules, 26 Workflow rules).
+The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (48 Web rules, 28 Workflow rules).
 
 ### Run the validator
 ```bash

@@ -41,10 +41,11 @@ You MUST adhere to the following rules without exception:
    - **Zero Hardcoded Colours**: NEVER write hex (`#ffffff`), `rgb()`/`rgba()`, or `hsl()`/`hsla()` colour literals in CSS, TS, or TSX, including `createTheme` palettes. The only places a colour literal may appear are `src/tokens/` and the fallback slot of `var(--token, <fallback>)`.
    - **Tier 3 (Non-CSS Renderers: Nivo/Plotly Charts, HTML5 Canvas, jsPDF)**: Standalone renderers consume tokens programmatically via JavaScript constants from `src/tokens/` (`UI_TOKENS`, chart token maps such as `CHART_TOKENS`) + `useIsDarkTheme()` / `isDarkTheme()`.
    - **Shape Tokens & Border Radius**: NEVER hardcode pixel corner radii (e.g. `border-radius: 4px;`) in CSS or components. Always reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
+   - **Spacing Tokens (Validated)**: NEVER write literal lengths for `margin*`, `padding*` or `gap` / `row-gap` / `column-gap` in CSS files (e.g. `padding: 12px;`, `margin-bottom: 1rem;`). Use spacing tokens with fallbacks: `var(--spacingXxs, 2px)`, `var(--spacingXs, 4px)`, `var(--spacingSm, 8px)`, `var(--spacingMd, 12px)`, `var(--spacingLg, 16px)`, `var(--spacingXl, 24px)` (`UI_TOKENS.spacing.*` in TS). Only `0`, `auto` and keywords may be written literally; `calc()` over tokens is allowed. The validator enforces `HARDCODED_SPACING`.
    - **Host-Owned Branding Principle**: The host application shell (`.vsw-app`) strictly owns and manages all branding and themes via CSS custom properties configured in `app-config.json` / Designer. Components must NEVER create independent brands or redefine app branding.
    - **Strict Ban on Token Re-Aliasing & Intermediate Indirection**: NEVER invent intermediate alias variables or custom color indirection layers (e.g., `--color-background: var(--primaryBackground)`, `--monitoring-bg: var(--color-background)`, `--monitoring-text: var(--primaryForeground)`). Components MUST directly consume official VertiGIS host CSS tokens with safe fallbacks (e.g., `var(--primaryBackground, #ffffff)`, `var(--primaryForeground, #212121)`, `var(--primaryBorder, #e0e0e0)`). Creating shadow token systems introduces multi-hop indirection, breaks DevTools inspectability, causes team confusion, and fragments the design system.
 3. **Co-Located Component CSS & Minimal Style Injection**:
-   - **Co-Located CSS Pattern**: Pair every component view (`ComponentName.tsx`) with a co-located CSS file (`ComponentName.css`), following the official `@vertigis/web-sdk` starter template architecture (`PointsOfInterest.css`).
+   - **Co-Located CSS Pattern**: Pair every component view (`ComponentName.tsx`) with a co-located CSS file (`ComponentName.css`), following the official `@vertigis/web-sdk` starter template architecture (`PointsOfInterest.css`). This applies to every `.tsx` that returns JSX, with no size exception; an empty `ComponentName.css` is allowed. The validator enforces `COMPONENT_CSS_PAIR`.
    - **Strict Ban on Global `:root` Injection**: NEVER declare `:root { ... }` rules in component CSS. Custom libraries are guest extensions running inside the host shell (`.vsw-app`). Declaring `:root` in library CSS pollutes the global document scope, risks overriding host variables, and leaks across unrelated widgets. If component-scoped CSS variables are needed for layout math (e.g. `--row-height: 36px`), declare them strictly on the namespaced component selector (e.g. `.ListHeader { --row-height: 36px; }`), never on `:root`, and never for color re-aliasing.
    - **Strict Class Namespacing (Host Shell Safety)**: Because the SDK Webpack pipeline compiles CSS via `style-loader` without CSS Modules hashing, all classes in `*.css` are injected globally into the host `<head>`. All classes MUST be strictly namespaced with the component name or BEM (e.g. `.ListHeader`, `.ListHeader-title` or `.list-header__title`). Strictly BANNED: generic classes like `.header`, `.title`, `.item`, `.button`, `.card`, `.active`.
    - **Minimal Style Injection & Style Hierarchy**: (1) Co-located `ComponentName.css` for static layouts, cards, hover states, and structural chrome (using `var(--borderRadius, 4px)` and zero redundant `font-family`). (2) Native `style={{ ... }}` ONLY for purely dynamic runtime calculations (e.g. calculated widths or coordinates). (3) Strict ban on scattering loose, repetitive `sx={{ ... }}` objects across markup. Rely on parent inheritance and tokens.
@@ -52,7 +53,7 @@ You MUST adhere to the following rules without exception:
    - **Zero Dead or Shared CSS**: Every class in a `*.css` file MUST be referenced in source (no orphan classes), and a top-level class MUST be defined in exactly one CSS file. Every `animation:` name MUST have a matching `@keyframes` in the same bundle. Shared MUI style dictionaries used by several components live in one `*Styles.ts` file, not copied per component.
    - **`!important` Only for Host Overrides**: The only accepted `!important` is `display: none !important` hiding a closed widget against host-shell inline display styles. Never use it to fight MUI or your own CSS.
    - **Canonical Token Fallbacks & Token Roles**: Every `var(--token, #fallback)` MUST use the same fallback as `src/tokens/ui.ts` (fallback drift renders different colours in tests and before shell boot). Outside `src/tokens/`, consume colours through `UI_TOKENS` in TS/TSX or through co-located CSS, never as raw `var(...)` string literals. Respect token roles: pale `--alert*Background` tokens are tints, never strong fills behind white text; chart series derive from foreground/accent tokens (`--primaryAccent`, `--alertGreenForeground`, `--alertRedForeground`), not border tokens.
-4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
+4. **Strict Component Modularity & Anti-God-Component Architecture**: NEVER write massive monolithic "god components". Adhere to strict file size thresholds (target max 150 lines, hard ceiling of 250 lines per file; any file > 250 lines MUST be refactored). Decompose complex components using the standard 7-directory blueprint: `components/` (stateless, presentational sub-views), `hooks/` (custom React hooks for state, timers, and event subscriptions), `services/` (component-level services), `utils/` and `helpers/` (pure functions and zero-dependency helpers), `tokens/` (design tokens and theme mappings), and `types/` (interfaces and serialization models). Maintain strict separation between MobX Component Models (`*Model.ts` managing state, observables, and lifecycle hooks `_onInitialize()` / `_onDestroy()` without JSX or DOM elements) and React Views (`*.tsx` handling layout rendering, `observer()`, and `<ErrorBoundary>`). Any file containing JSX MUST use the `.tsx` extension; JSX in a `.ts` file is banned (`JSX_IN_TS`). Apply extraction heuristics: decompose when JSX nesting exceeds 3 levels, extract subscriptions/listeners to hooks, and isolate pure data algorithms to utils.
 5. **Exposing Properties to Designer (Settings Schema Protocol & Attribute Lifecycle)**: To expose configurable parameters to VertiGIS Studio Web Designer, the component's React props MUST extend `LayoutElementProperties<TModel>`, AND the component manifest in `registry.registerComponent` MUST implement the **Designer Settings Schema Protocol**:
    - **Safe Trimming & Explicit Attribute Deletion**: When persisting settings in `applyLayoutDesignerSettings`, NEVER write empty strings (`node.attributes.set(key, "")`). Writing empty strings creates sticky XML attributes that resurrect default values on reload. Always trim string inputs (`safeTrim`); if a value is present, call `node.attributes.set(kebabKey, val)`; if empty or cleared, call `node.attributes.delete(kebabKey)`.
    - **Three-Way Casing Synchronization**: XML attributes in `layout.xml` are strictly **kebab-case** (`telemetry-layout-id`, `layout-id`). Component model properties and React props are **camelCase** (`telemetryLayoutId`, `layoutId`). The component props (`LayoutElementProperties`) MUST declare BOTH kebab-case and camelCase forms, and `getLayoutDesignerSettings` must inspect both (`attr("telemetry-layout-id") ?? attr("telemetryLayoutId")`).
@@ -264,33 +265,33 @@ export default CustomWidget;
 #### Co-Located Component CSS (`src/components/CustomWidget/CustomWidget.css`)
 ```css
 .CustomWidget {
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
 
 .CustomWidget-title {
-    margin: 0 0 0.25rem 0;
+    margin: 0 0 var(--spacingXs, 4px) 0;
     font-size: 1.25rem;
     font-weight: 500;
 }
 
 .CustomWidget-subtitle {
-    margin: 0 0 1rem 0;
+    margin: 0 0 var(--spacingLg, 16px) 0;
     font-size: 0.875rem;
     color: var(--secondaryForeground, #666666);
 }
 
 .CustomWidget-card {
-    padding: 0.75rem;
-    margin-bottom: 1rem;
+    padding: var(--spacingMd, 12px);
+    margin-bottom: var(--spacingLg, 16px);
     background-color: var(--secondaryBackground, #f5f5f5);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
 
 .CustomWidget-body {
-    margin: 0 0 0.25rem 0;
+    margin: 0 0 var(--spacingXs, 4px) 0;
     font-size: 0.875rem;
 }
 

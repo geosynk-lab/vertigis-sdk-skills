@@ -204,7 +204,7 @@ Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
 
 ```css
 .MyWidget {
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
 }
 
 .MyWidget--bordered {
@@ -213,19 +213,19 @@ Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
 }
 
 .MyWidget-surface {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
+    margin-bottom: var(--spacingLg, 16px);
+    padding: var(--spacingMd, 12px);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
     background-color: var(--secondaryBackground, #f5f5f5);
 }
 
 .MyWidget-row {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacingSm, 8px);
 }
 
 .MyWidget-badge {
-    padding: 0.125rem 0.5rem;
+    padding: var(--spacingXxs, 2px) var(--spacingSm, 8px);
     border-radius: var(--borderRadiusSm, 2px);
     background-color: var(--alertGreenBackground, #008040);
     color: var(--alertGreenForeground, #ffffff);
@@ -790,7 +790,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 ```css
 /* src/utils/ErrorBoundary.css */
 .ErrorBoundary {
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
     border-radius: var(--borderRadius, 4px);
     background-color: var(--alertRedBackground, #b22222);
     color: var(--alertRedForeground, #ffffff);

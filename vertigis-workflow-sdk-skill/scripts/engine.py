@@ -57,6 +57,7 @@ class Context:
     files: list
     canonical: dict = field(default_factory=dict)
     violations: list = field(default_factory=list)
+    single_file: bool = False
 
     def add(self, rule: str, src: SourceFile, index: int, detail: str = "") -> None:
         self.violations.append(Violation(rule, src.rel, src.line_of(index), detail))
@@ -245,7 +246,7 @@ def is_suppressed(v: Violation, suppressions: list[Suppression], used: set) -> b
 def run(root: Path, catalog_path: Path, checks: list) -> dict:
     sdk, catalog = load_catalog(catalog_path)
     files = collect_files(root)
-    ctx = Context(sdk, catalog, files, canonical_fallbacks(files))
+    ctx = Context(sdk, catalog, files, canonical_fallbacks(files), single_file=Path(root).is_file())
     suppressions = parse_suppressions(ctx)
     for check in checks:
         check(ctx)

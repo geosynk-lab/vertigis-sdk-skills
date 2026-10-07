@@ -1,0 +1,5 @@
+.vertigis-panel-body {
+    padding: var(--spacingMd, 12px) var(--spacingLg, 16px);
+    margin: 0 auto;
+    gap: calc(var(--spacingSm, 8px) * 2);
+}

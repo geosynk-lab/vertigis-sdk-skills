@@ -4,13 +4,13 @@ from __future__ import annotations
 import posixpath
 import re
 
-from engine import Context, matching_close
+from engine import Context, in_tokens_dir, matching_close, string_literals
 
 RULE_IDS = {
     "HANDLES_FIELD_DECLARED", "LIFECYCLE_SUPER_ORDER", "MODEL_VIEW_SEPARATION", "OBSERVER_WRAPPING",
     "LAYOUT_ELEMENT_WRAPPER", "ACTIVE_PROP_HIDING", "ERROR_BOUNDARY", "DESIGNER_EMPTY_ATTRIBUTE",
     "FILE_LENGTH_TARGET", "FILE_LENGTH_CEILING", "FORM_PROPS_WIRING", "ACTIVITY_HANDLER_PATTERN",
-    "BARREL_EXPORT_NAMING",
+    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "COMPONENT_CSS_PAIR",
 }
 
 MODEL_BASE = re.compile(r"\bclass\s+\w+[^{]*\bextends\s+(ComponentModelBase|ModelBase)\b")
@@ -21,6 +21,64 @@ FORM_CONTROLS = re.compile(r"<(TextField|Select|Checkbox|Radio|Switch|DatePicker
 VISIBLE_GUARD = re.compile(r"if\s*\(\s*!\s*(?:props\.)?visible\s*\)\s*\{?\s*return\s+null|"
                            r"(?:props\.)?visible\s*===\s*false\s*\)\s*\{?\s*return\s+null|"
                            r"!\s*(?:props\.)?visible\s*\?\s*null")
+JSX_SYNTAX = re.compile(r"</[A-Za-z][\w.]*\s*>|<[A-Za-z][\w.]*(?:\s[^<>]*)?/>|</>|"
+                        r"(?:return|=>)\s*\(?\s*<[A-Za-z][\w.]*[\s>]")
+JSX_RETURN = re.compile(r"(?:return|=>)\s*\(?\s*<[A-Za-z>]")
+
+
+def template_end(code: str, i: int) -> int:
+    """Index after the template literal opening at code[i], including nested ${...} templates."""
+    i, n = i + 1, len(code)
+    while i < n:
+        c = code[i]
+        if c == "\\":
+            i += 2
+        elif c == "`":
+            return i + 1
+        elif code.startswith("${", i):
+            i, depth = i + 2, 1
+            while i < n and depth:
+                if code[i] == "`":
+                    i = template_end(code, i)
+                    continue
+                depth += {"{": 1, "}": -1}.get(code[i], 0)
+                i += 1
+        else:
+            i += 1
+    return n
+
+
+def without_strings(code: str) -> str:
+    out = list(code)
+    for start, text in string_literals(code):
+        if code[start - 1] != "`":
+            out[start:start + len(text)] = " " * len(text)
+    text = "".join(out)
+    i = text.find("`")
+    while i >= 0:
+        end = template_end(text, i)
+        out[i:end] = [ch if ch == "\n" else " " for ch in text[i:end]]
+        i = text.find("`", end)
+    return "".join(out)
+
+
+def check_jsx_in_ts(ctx: Context, src) -> None:
+    m = JSX_SYNTAX.search(without_strings(src.code))
+    if m:
+        ctx.add("JSX_IN_TS", src, m.start(), m.group(0).strip())
+
+
+def check_css_pair(ctx: Context) -> None:
+    if ctx.single_file:
+        return
+    present = {f.rel for f in ctx.files}
+    for src in ctx.files:
+        if src.kind != "tsx" or src.is_test or in_tokens_dir(src.rel):
+            continue
+        m = JSX_RETURN.search(without_strings(src.code))
+        css = src.rel[:-len(".tsx")] + ".css"
+        if m and css not in present:
+            ctx.add("COMPONENT_CSS_PAIR", src, m.start(), f"missing {posixpath.basename(css)}")
 
 
 def method_body(code: str, name: str):
@@ -109,6 +167,8 @@ def check_arch(ctx: Context) -> None:
     for src in ctx.files:
         if src.kind not in ("ts", "tsx") or src.is_test:
             continue
+        if src.kind == "ts":
+            check_jsx_in_ts(ctx, src)
         lines = len(src.raw.splitlines())
         if lines > 250:
             ctx.add_line("FILE_LENGTH_CEILING", src.rel, 1, f"{lines} lines")
@@ -126,6 +186,8 @@ def check_arch(ctx: Context) -> None:
                 check_barrel(ctx, src)
     if ctx.sdk == "workflow":
         check_form_elements(ctx)
+    else:
+        check_css_pair(ctx)
 
 
 CHECKS = [check_arch]

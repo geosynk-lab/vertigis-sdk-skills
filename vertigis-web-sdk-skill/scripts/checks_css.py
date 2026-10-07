@@ -8,13 +8,15 @@ from engine import TOKEN_VAR, Context, color_literal, in_tokens_dir, normalize_h
 RULE_IDS = {
     "CSS_ROOT_SCOPE", "TOKEN_REALIAS", "FONT_FAMILY", "HARDCODED_RADIUS", "HARDCODED_COLOR",
     "TOKEN_FALLBACK_DRIFT", "CSS_GENERIC_CLASS", "CSS_MUI_OVERRIDE", "CSS_IMPORTANT",
-    "CSS_ORPHAN_CLASS", "CSS_DUPLICATE_CLASS", "WORKFLOW_CSS_FILE", "REDUNDANT_DECLARATION",
+    "CSS_ORPHAN_CLASS", "CSS_DUPLICATE_CLASS", "WORKFLOW_CSS_FILE", "REDUNDANT_DECLARATION", "HARDCODED_SPACING",
 }
 
 SELECTOR = re.compile(r"([^{};]+)\{")
 DECLARATION = re.compile(r"([\w-]+)\s*:\s*([^;{}]+)(?=[;}])")
 CLASS_NAME = re.compile(r"\.(-?[_a-zA-Z][\w-]*)")
 RADIUS_PROP = re.compile(r"border(-(top|bottom)-(left|right))?-radius")
+SPACING_PROP = re.compile(r"(margin|padding)(-(top|right|bottom|left|inline|block)(-(start|end))?)?|(row-|column-)?gap")
+LENGTH_LITERAL = re.compile(r"(?<![\w.-])-?(\d*\.\d+|\d+)(px|rem|em|%|vh|vw|vmin|vmax|ch|ex|pt)(?![\w.%])")
 RULE_BLOCK = re.compile(r"\{([^{}]*)\}")
 
 
@@ -55,6 +57,9 @@ def check_declarations(ctx: Context, src) -> None:
         if RADIUS_PROP.fullmatch(prop):
             if any(px != "9999px" for px in re.findall(r"\b[1-9][\d.]*px", strip_var_calls(value))):
                 ctx.add("HARDCODED_RADIUS", src, index, f"{prop}: {value}")
+        if SPACING_PROP.fullmatch(prop):
+            if any(float(n) != 0 for n, _ in LENGTH_LITERAL.findall(strip_var_calls(value))):
+                ctx.add("HARDCODED_SPACING", src, index, f"{prop}: {value}")
         if color_literal(value):
             ctx.add("HARDCODED_COLOR", src, index, f"{prop}: {value}")
 

@@ -33,6 +33,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 
 ## 2. Two-Tier Styling Architecture (Pure Theme Inheritance & Zero Color Injection)
 - **Zero Hardcoded Colors & Shapes**: Strict ban on hardcoded hex (`#ffffff`), RGB (`rgb(...)`), or HSL color values, and hardcoded corner radii (e.g. `4px`). Always reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
+- **Spacing Tokens**: In any CSS file, NEVER write literal lengths for `margin*`, `padding*` or `gap`. Use `var(--spacingXxs, 2px)`, `var(--spacingXs, 4px)`, `var(--spacingSm, 8px)`, `var(--spacingMd, 12px)`, `var(--spacingLg, 16px)`, `var(--spacingXl, 24px)`; only `0`, `auto` and keywords may be literal.
 - **Safe Fallback Requirement**: ALWAYS provide safe fallbacks for CSS variable tokens (e.g., `var(--primaryBackground, #ffffff)`, `var(--borderRadius, 4px)`) to ensure resilient rendering in headless, disconnected, or preview environments. Every fallback MUST match the value in the element's `tokens/ui.ts`.
 - **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TimePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Radio`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisWorkflowMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
 - **Inherit, Don't Restate (Minimal CSS Injection)**: Form elements inherit text colour, background and font from the host panel. NEVER restate `color: var(--primaryForeground)`, `background: var(--primaryBackground)` or `<Typography color="text.primary">`. Set a colour token ONLY where the element deliberately differs from its parent (status banner, accent badge, nested card). Exceptions: opaque overlays (`position: sticky|fixed|absolute` or `z-index`), the `createTheme` provider, and portals with a `vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- <reason>` comment.
@@ -54,6 +55,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 
 ## 3. Strict Component Modularity & Anti-God-Component Architecture
 - **Strict File Size Thresholds**: Max 150–250 lines per file. Any file exceeding 250 lines MUST be refactored and decomposed.
+- **JSX Only in `.tsx`**: Any file containing JSX MUST use the `.tsx` extension; never put JSX in a `.ts` file.
 - **Standard Directory Blueprint**: Decompose complex form elements into:
   - `components/`: Presentational, stateless sub-components using MUI.
   - `hooks/`: Custom React hooks for state, lifecycle subscriptions, and workflow event handling.

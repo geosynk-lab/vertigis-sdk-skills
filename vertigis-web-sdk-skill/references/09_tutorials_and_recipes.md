@@ -107,7 +107,7 @@ export default DashboardWidget;
 ```css
 /* src/components/DashboardWidget/DashboardWidget.css */
 .DashboardWidget {
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
     border-top: 4px solid var(--primaryAccent, #007ac2);
     border-radius: var(--borderRadius, 4px);
     background-color: var(--secondaryBackground, #f5f5f5);

@@ -342,6 +342,10 @@ export const UI_TOKENS = {
         /** Pill radius for status capsules and rounded badges */
         borderRadiusPill: "9999px",
     },
+    spacing: {
+        xxs: "var(--spacingXxs, 2px)", xs: "var(--spacingXs, 4px)", sm: "var(--spacingSm, 8px)",
+        md: "var(--spacingMd, 12px)", lg: "var(--spacingLg, 16px)", xl: "var(--spacingXl, 24px)",
+    },
 } as const;
 
 export type UiTokens = typeof UI_TOKENS;
@@ -505,7 +509,7 @@ The card's layout and states live in `FeatureCard.css`; `color-mix()` tints the 
 
 ```css
 .FeatureCard {
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
     transition: background-color 150ms ease, border-color 150ms ease;
@@ -707,7 +711,7 @@ In VertiGIS Studio Web, branding and visual identity are owned by the **host app
 #### Tier 1: Standard Material UI Controls (`VertiGisThemeProvider`)
 Standard MUI controls (`<Radio>`, `<Checkbox>`, `<Button>`, `<Typography>`, `<Dialog>`, `<Switch>`, `<TextField>`, `<Select>`) must be wrapped in a shared or scoped `VertiGisThemeProvider` driven by `useIsDarkTheme()`.
 
-```typescript
+```tsx
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { type FC, type ReactNode, useMemo } from "react";
 import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
@@ -870,7 +874,7 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0.75rem 1rem;
+      padding: var(--spacingMd, 12px) var(--spacingLg, 16px);
       border-bottom: 1px solid var(--primaryBorder, #e0e0e0);
   }
 
@@ -883,7 +887,7 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
   .ListHeader-badge {
       display: inline-flex;
       align-items: center;
-      padding: 0.125rem 0.5rem;
+      padding: var(--spacingXxs, 2px) var(--spacingSm, 8px);
       font-size: 0.75rem;
       border-radius: var(--borderRadius, 4px);
       background-color: var(--secondaryBackground, #f5f5f5);
@@ -1381,7 +1385,7 @@ export default InspectionDashboard;
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: 1rem;
+    padding: var(--spacingLg, 16px);
 }
 ```
 
@@ -1472,7 +1476,7 @@ export function DashboardHeader({ title, onExportClick }: DashboardHeaderProps):
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacingLg, 16px);
 }
 ```
 
