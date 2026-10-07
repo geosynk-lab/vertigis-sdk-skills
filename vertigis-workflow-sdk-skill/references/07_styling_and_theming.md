@@ -812,7 +812,7 @@ To ensure form elements run safely across VertiGIS Web and Mobile hosts:
    // ✅ Automatically flips between light/dark secondary colors:
    <Typography variant="caption" color="text.secondary">Validation hint or instruction</Typography>
    ```
-4. **Type-Safe Style Dictionaries (`SxProps<Theme>`)**: When custom MUI styles are needed for form element layout, isolate them into typed dictionaries at the top of the file rather than scattering inline `sx` objects across JSX:
+4. **Type-Safe Layout Dictionaries (`SxProps<Theme>`)**: When custom MUI layout properties are needed beyond standard Stack spacing, isolate them into typed dictionaries at the top of the file. Cosmetics belong on the container component (`<Paper variant="outlined">`) or in `muiTheme.ts`, not in `styles`:
    ```typescript
    import type { SxProps, Theme } from "@mui/material/styles";
 
@@ -822,7 +822,6 @@ To ensure form elements run safely across VertiGIS Web and Mobile hosts:
            flexDirection: "column",
            gap: 1.5,
            p: 2,
-           borderRadius: "var(--borderRadius, 4px)",
        },
    };
    ```
@@ -941,10 +940,9 @@ Below is a complete, production-grade custom form element combining MUI Typograp
 
 ```tsx
 import * as React from "react";
-import { Box, Stack, Button, TextField, Typography } from "@mui/material";
+import { Paper, Stack, TextField, Typography } from "@mui/material";
 import { FormElementProps } from "@vertigis/workflow";
 import { tokens } from "./tokens";
-import { useIsDarkTheme } from "./hooks/useIsDarkTheme";
 import { FormElementErrorBoundary } from "./components/FormElementErrorBoundary";
 
 export interface InspectionNotesProps extends FormElementProps<string> {
@@ -965,7 +963,6 @@ function InspectionNotesView(props: InspectionNotesProps) {
         maxLength = 500,
     } = props;
 
-    const isDark = useIsDarkTheme();
     const [localText, setLocalText] = React.useState<string>(value);
 
     // Sync external workflow value updates
@@ -987,62 +984,46 @@ function InspectionNotesView(props: InspectionNotesProps) {
     const isOverLimit = localText.length > maxLength;
 
     return (
-        <Box
-            sx={{
-                p: 2,
-                backgroundColor: tokens.ui.surface.primary,
-                border: `1px solid ${tokens.ui.border.primary}`,
-                borderRadius: tokens.ui.shape.borderRadius,
-                boxShadow: tokens.ui.shape.shadowPrimary,
-            }}
-        >
-            {/* Form Element Header */}
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                <Typography variant="subtitle1">
-                    {label}
-                </Typography>
-                <Typography variant="caption" color={isOverLimit ? "error" : "text.secondary"}>
-                    {localText.length} / {maxLength}
-                </Typography>
-            </Stack>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+                {/* Form Element Header */}
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="subtitle1">
+                        {label}
+                    </Typography>
+                    <Typography variant="caption" color={isOverLimit ? "error" : "text.secondary"}>
+                        {localText.length} / {maxLength}
+                    </Typography>
+                </Stack>
 
-            {/* Main Input Field */}
-            <TextField
-                multiline
-                rows={4}
-                fullWidth
-                disabled={!enabled}
-                value={localText}
-                onChange={handleChange}
-                placeholder={placeholder}
-                slotProps={{
-                    input: {
-                        readOnly,
-                        sx: {
-                            backgroundColor: readOnly
-                                ? tokens.ui.surface.secondary
-                                : tokens.surfaceMix(tokens.ui.text.primary, tokens.ui.surface.primary, isDark ? 4 : 0),
-                            minHeight: tokens.ui.touch.minHeight,
+                {/* Main Input Field */}
+                <TextField
+                    multiline
+                    rows={4}
+                    fullWidth
+                    disabled={!enabled}
+                    value={localText}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    slotProps={{
+                        input: {
+                            readOnly,
+                            sx: {
+                                minHeight: tokens.ui.touch.minHeight,
+                            },
                         },
-                    },
-                    htmlInput: { "aria-label": label },
-                }}
-            />
-
-            {/* Validation Feedback */}
-            {isOverLimit && (
-                <Typography
-                    variant="caption"
-                    color="error"
-                    sx={{
-                        display: "block",
-                        mt: 0.5,
+                        htmlInput: { "aria-label": label },
                     }}
-                >
-                    Character limit exceeded. Please shorten your notes before submitting.
-                </Typography>
-            )}
-        </Box>
+                />
+
+                {/* Validation Feedback */}
+                {isOverLimit && (
+                    <Typography variant="caption" color="error">
+                        Character limit exceeded. Please shorten your notes before submitting.
+                    </Typography>
+                )}
+            </Stack>
+        </Paper>
     );
 }
 

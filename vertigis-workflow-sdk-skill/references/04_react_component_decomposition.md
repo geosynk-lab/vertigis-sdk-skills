@@ -126,8 +126,7 @@ Break large JSX templates into single-responsibility, stateless presentation com
 ```tsx
 // src/elements/SketchWidget/components/StatusBar.tsx
 import * as React from "react";
-import { Stack, Typography, LinearProgress } from "@mui/material";
-import { tokens } from "../tokens";
+import { Paper, Stack, Typography, LinearProgress } from "@mui/material";
 
 export interface StatusBarProps {
     statusText: string;
@@ -136,23 +135,18 @@ export interface StatusBarProps {
 
 export function StatusBar({ statusText, isProcessing }: StatusBarProps) {
     return (
-        <Stack
-            spacing={1}
-            sx={{
-                p: 1.5,
-                backgroundColor: tokens.ui.surface.secondary,
-                border: `1px solid ${tokens.ui.border.primary}`,
-                borderRadius: tokens.ui.shape.borderRadius,
-            }}
-        >
-            <Typography variant="caption" color="text.secondary">
-                {statusText}
-            </Typography>
-            {isProcessing && <LinearProgress color="primary" sx={{ borderRadius: tokens.ui.shape.borderRadius }} />}
-        </Stack>
+        <Paper variant="outlined" sx={{ p: 1.5 }}>
+            <Stack spacing={1}>
+                <Typography variant="caption" color="text.secondary">
+                    {statusText}
+                </Typography>
+                {isProcessing && <LinearProgress color="primary" />}
+            </Stack>
+        </Paper>
     );
 }
 ```
+
 
 ```tsx
 // src/elements/SketchWidget/components/ActionButtons.tsx
@@ -212,8 +206,7 @@ In enterprise workflow forms, an unhandled exception inside a custom element mus
 
 ```tsx
 import * as React from "react";
-import { Box, Typography, Button } from "@mui/material";
-import { tokens } from "../tokens";
+import { Alert, AlertTitle, Button } from "@mui/material";
 
 interface ErrorBoundaryProps {
     children: React.ReactNode;
@@ -245,36 +238,24 @@ export class FormElementErrorBoundary extends React.Component<ErrorBoundaryProps
     render(): React.ReactNode {
         if (this.state.hasError) {
             return (
-                <Box
-                    sx={{
-                        p: 2,
-                        backgroundColor: tokens.ui.status.errorBg,
-                        color: tokens.ui.status.errorFg,
-                        border: `1px solid ${tokens.ui.status.errorBorder}`,
-                        borderRadius: tokens.ui.shape.borderRadius,
-                    }}
+                <Alert
+                    severity="error"
+                    action={
+                        <Button size="small" color="inherit" onClick={this.handleReset}>
+                            Retry Widget
+                        </Button>
+                    }
                 >
-                    <Typography variant="subtitle2" color="inherit">
-                        Widget Display Error
-                    </Typography>
-                    <Typography variant="caption" color="inherit" sx={{ display: "block", my: 1 }}>
-                        {this.state.errorMessage}
-                    </Typography>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        color="inherit"
-                        onClick={this.handleReset}
-                    >
-                        Retry Widget
-                    </Button>
-                </Box>
+                    <AlertTitle>Widget Display Error</AlertTitle>
+                    {this.state.errorMessage}
+                </Alert>
             );
         }
         return this.props.children;
     }
 }
 ```
+
 
 ---
 
@@ -286,8 +267,7 @@ export class FormElementErrorBoundary extends React.Component<ErrorBoundaryProps
 // src/elements/SketchWidget/main.tsx
 import * as React from "react";
 import { FormElementRegistration } from "@vertigis/workflow";
-import { Box } from "@mui/material";
-import { tokens } from "./tokens";
+import { Paper, Stack } from "@mui/material";
 import { useSketchLogic } from "./hooks";
 import { StatusBar, ActionButtons, FormElementErrorBoundary } from "./components";
 import { SketchWidgetProps } from "./types";
@@ -301,26 +281,20 @@ function SketchWidgetView(props: SketchWidgetProps): React.ReactElement | null {
     }
 
     return (
-        <Box
-            sx={{
-                p: 2,
-                backgroundColor: tokens.ui.surface.primary,
-                border: `1px solid ${tokens.ui.border.primary}`,
-                borderRadius: tokens.ui.shape.borderRadius,
-                boxShadow: tokens.ui.shape.shadowPrimary,
-            }}
-        >
-            <StatusBar
-                statusText={`Active Tool: ${activeTool} (${featureCount} features drawn)`}
-                isProcessing={false}
-            />
-            <ActionButtons
-                enabled={enabled}
-                readOnly={readOnly}
-                onClear={handleClear}
-                onSubmit={() => setValue(JSON.stringify({ activeTool, featureCount }))}
-            />
-        </Box>
+        <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+                <StatusBar
+                    statusText={`Active Tool: ${activeTool} (${featureCount} features drawn)`}
+                    isProcessing={false}
+                />
+                <ActionButtons
+                    enabled={enabled}
+                    readOnly={readOnly}
+                    onClear={handleClear}
+                    onSubmit={() => setValue(JSON.stringify({ activeTool, featureCount }))}
+                />
+            </Stack>
+        </Paper>
     );
 }
 

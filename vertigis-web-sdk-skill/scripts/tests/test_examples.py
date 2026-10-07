@@ -19,7 +19,6 @@ LANG = {"typescript": "ts", "jsx": "tsx"}
 PATH_HINT = re.compile(r"`((?:[\w.<>-]+/)*[\w.<>-]+\.(?:tsx?|css))`")
 WHOLE_FILE_RULES = {"ERROR_BOUNDARY", "FORM_PROPS_WIRING", "OBSERVER_WRAPPING", "LAYOUT_ELEMENT_WRAPPER",
                     "MODEL_VIEW_SEPARATION"}
-CROSS_FILE_RULES = {"COMPONENT_CSS_PAIR"}
 
 
 def example_path(text: str, start: int, lang: str) -> str:
@@ -43,7 +42,7 @@ def example_errors(skill_dir: Path, checks: list) -> list[str]:
             lang = LANG.get(m.group(2), m.group(2))
             tags = m.group(3).split()
             expect_bad = "bad" in tags
-            skipped = CROSS_FILE_RULES | (WHOLE_FILE_RULES if "fragment" in tags else set())
+            skipped = WHOLE_FILE_RULES if "fragment" in tags else set()
             with tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / example_path(text, m.start(), lang)
                 path.parent.mkdir(parents=True, exist_ok=True)

@@ -475,35 +475,29 @@ export function surfaceMix(baseToken: string, overlayToken: string, tintPercent:
 #### Applied Component Styling Example
 ```tsx
 import * as React from "react";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography, Button, Stack } from "@mui/material";
 import { UI_TOKENS, alphaMix } from "../tokens";
 import "./FeatureCard.css";
 
 export function FeatureCard({ title, description, isSelected }: { title: string; description: string; isSelected: boolean }) {
     return (
         <Box className={isSelected ? "FeatureCard FeatureCard--selected" : "FeatureCard"}>
-            <Typography variant="h6" sx={{ mb: 1 }}>
-                {title}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {description}
-            </Typography>
-            <Button
-                variant="contained"
-                color="primary"
-                sx={{
-                    borderRadius: UI_TOKENS.shape.borderRadius,
-                    "&:hover": {
-                        boxShadow: `0 0 0 3px ${alphaMix(UI_TOKENS.accent.primary, 25)}`,
-                    },
-                }}
-            >
-                View Details
-            </Button>
+            <Stack spacing={1}>
+                <Typography variant="h6">
+                    {title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    {description}
+                </Typography>
+                <Button variant="contained" color="primary">
+                    View Details
+                </Button>
+            </Stack>
         </Box>
     );
 }
 ```
+
 
 The card's layout and states live in `FeatureCard.css`; `color-mix()` tints the inherited surface:
 
@@ -706,51 +700,108 @@ export function useIsDarkTheme(): boolean {
 
 ### 3. Two-Tier Theming Architecture: VertiGisThemeProvider & Host Design Tokens
 
-In VertiGIS Studio Web, branding and visual identity are owned by the **host application shell** (`.vsw-app`) via the `branding` service in `app-config.json` and Designer. To bridge this into custom extensions cleanly without CSS bloat, apply the **Two-Tier Styling Architecture**:
+In VertiGIS Studio Web, branding and visual identity are owned by the **host application shell** (`.vsw-app`) via the `branding` service in `app-config.json` and Designer. The host governs cosmetics: components inherit surface, elevation, borders and typography through MUI's `ThemeProvider` and the host CSS custom properties, and keep their own `sx` / `style` to layout, geometry and 8px-grid spacing (SKILL.md Rule 2).
 
 #### Tier 1: Standard Material UI Controls (`VertiGisThemeProvider`)
-Standard MUI controls (`<Radio>`, `<Checkbox>`, `<Button>`, `<Typography>`, `<Dialog>`, `<Switch>`, `<TextField>`, `<Select>`) must be wrapped in a shared or scoped `VertiGisThemeProvider` driven by `useIsDarkTheme()`.
+Standard MUI controls (`<Radio>`, `<Checkbox>`, `<Button>`, `<Typography>`, `<Dialog>`, `<Switch>`, `<TextField>`, `<Select>`, `<Card>`, `<Paper>`) must be wrapped in a shared or scoped `VertiGisThemeProvider` driven by `useIsDarkTheme()`. `src/tokens/muiTheme.ts` is the single home for cosmetic styling: component defaults and state styles live in `components.*.styleOverrides`, consuming `UI_TOKENS.*` CSS-variable tokens. Leave `spacing` unset so MUI's default 8px unit applies (`p: 1` = 8px).
 
-```tsx
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { type FC, type ReactNode, useMemo } from "react";
-import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
+`src/tokens/muiTheme.ts`
+```ts
+import { createTheme, type Theme } from "@mui/material/styles";
+
+import { UI_TOKENS } from "./ui";
 
 export function getVertiGisPortalContainer(): HTMLElement | null {
     if (typeof document === "undefined") return null;
     return document.querySelector<HTMLElement>(".vsw-app") ?? document.body;
 }
 
-export function createVertiGisMuiTheme(isDark: boolean) {
+/**
+ * The only home for cosmetic styling. Components keep sx to layout, geometry and 8px-grid spacing,
+ * inherit everything else from the host shell's CSS custom properties, and express state as
+ * data attributes (e.g. <Card data-status={status}>) that are styled here.
+ */
+export function createVertiGisTheme(isDark: boolean): Theme {
     return createTheme({
         palette: { mode: isDark ? "dark" : "light" },
-        spacing: 5,
+        typography: { fontFamily: "inherit" },
         components: {
             MuiPopover: {
                 defaultProps: { container: getVertiGisPortalContainer },
             },
             MuiCheckbox: {
                 defaultProps: { size: "small" },
-                styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } },
+                styleOverrides: { root: { "&.Mui-checked": { color: UI_TOKENS.accent.primary } } },
             },
             MuiRadio: {
                 defaultProps: { size: "small" },
-                styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } },
+                styleOverrides: { root: { "&.Mui-checked": { color: UI_TOKENS.accent.primary } } },
             },
             MuiButton: {
                 defaultProps: { size: "small" },
                 styleOverrides: { root: { textTransform: "none", fontWeight: 600 } },
             },
+            MuiCard: {
+                defaultProps: { variant: "outlined" },
+                styleOverrides: {
+                    root: {
+                        position: "relative",
+                        borderRadius: UI_TOKENS.shape.borderRadiusLarge,
+                        backgroundColor: UI_TOKENS.surface.primary,
+                        border: `1px solid ${UI_TOKENS.border.primary}`,
+                        borderLeftWidth: 4,
+                        borderLeftColor: "transparent",
+                        boxShadow: "none",
+                        '&[data-status="Open"], &[data-status="Opened"]': { borderLeftColor: UI_TOKENS.status.warningFg },
+                        '&[data-status="In Progress"]': { borderLeftColor: UI_TOKENS.accent.primary },
+                        '&[data-status="Completed"]': { borderLeftColor: UI_TOKENS.status.successFg },
+                        '&[data-status="Closed"], &[data-status="Archived"]': { borderLeftColor: UI_TOKENS.text.secondary },
+                    },
+                },
+            },
+            MuiPaper: {
+                styleOverrides: {
+                    root: { backgroundImage: "none" },
+                    outlined: { borderColor: UI_TOKENS.border.primary, borderRadius: UI_TOKENS.shape.borderRadius },
+                },
+            },
         },
     });
 }
 
-export const VertiGisThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
-    const isDark = useIsDarkTheme();
-    const theme = useMemo(() => createVertiGisMuiTheme(isDark), [isDark]);
+export default createVertiGisTheme;
+```
 
+`src/tokens/VertiGisThemeProvider.tsx`
+```tsx
+import * as React from "react";
+import { ThemeProvider } from "@mui/material/styles";
+
+import { useIsDarkTheme } from "../hooks/useIsDarkTheme";
+import { createVertiGisTheme } from "./muiTheme";
+
+/** Applies src/tokens/muiTheme.ts, following the shell's light/dark mode. */
+export function VertiGisThemeProvider({ children }: { children: React.ReactNode }): React.ReactElement {
+    const isDark = useIsDarkTheme();
+    const theme = React.useMemo(() => createVertiGisTheme(isDark), [isDark]);
     return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
-};
+}
+
+export default VertiGisThemeProvider;
+```
+
+##### Declarative State via Data Attributes
+Components describe state, the theme decides how it looks. Put the value on the element as a data attribute; the matching `&[data-status="..."]` selector lives in `muiTheme.ts` (see `MuiCard` above):
+
+```tsx fragment
+<Card data-status={record.status}>
+    <CardContent>
+        <Stack spacing={0.5}>
+            <Typography variant="subtitle2">{record.title}</Typography>
+            <Typography variant="caption" color="text.secondary">{record.status}</Typography>
+        </Stack>
+    </CardContent>
+</Card>
 ```
 
 `MuiPopover` containment is mandatory because MUI menus render through portals. Keeping the portal inside `.vsw-app` preserves VertiGIS token inheritance and stacking context. Menu text, hover, and selected states should remain semantic MUI palette states; never force token colours with `!important`.
@@ -787,7 +838,7 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
    // ✅ Automatically flips between light/dark secondary colors:
    <Typography variant="caption" color="text.secondary">Subtitle text</Typography>
    ```
-4. **Type-Safe Style Dictionaries (`SxProps<Theme>`)**: When custom MUI styles are needed, isolate them into typed dictionaries at the top of the file rather than scattering inline `sx` objects across JSX:
+4. **Type-Safe Layout Dictionaries (`SxProps<Theme>`)**: When custom MUI layout properties are needed beyond standard Stack spacing, isolate them into typed dictionaries at the top of the file. Cosmetics belong on the container component (`<Paper variant="outlined">`) or in `muiTheme.ts`, not in `styles`:
    ```typescript
    import type { SxProps, Theme } from "@mui/material/styles";
 
@@ -797,8 +848,6 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
            alignItems: "center",
            gap: 1.5,
            p: 1.5,
-           borderRadius: "var(--borderRadius, 4px)",
-           backgroundColor: "var(--secondaryBackground, #f8fafc)",
        },
    };
    ```
@@ -1181,7 +1230,7 @@ src/components/InspectionDashboard/
    - **React View (`main.tsx`)**:
      - Serves as a high-level UI coordinator.
      - Extends `LayoutElementProperties<TModel>`.
-     - Wraps children in `<LayoutElement {...props}>` and `<ErrorBoundary>`, styled via co-located namespaced CSS.
+     - Wraps children in `<LayoutElement {...props}>` and `<ErrorBoundary>`, laid out with `<Stack>` / `<Box>` and layout-only `sx`.
      - Keeps coordinator logic minimal (< 100 lines), delegating UI trees to `components/` and business workflows to `hooks/`.
 
 ---
@@ -1324,6 +1373,7 @@ By applying the 7-directory blueprint and extraction heuristics, the component i
 // ✅ PRODUCTION PATTERN: Clean Orchestrator View (< 70 lines)
 import * as React from "react";
 import { observer } from "mobx-react-lite";
+import { Stack } from "@mui/material";
 import { LayoutElement, LayoutElementProperties } from "@vertigis/web/components";
 import { ErrorBoundary } from "../../utils/ErrorBoundary";
 import { InspectionDashboardModel } from "./InspectionDashboardModel";
@@ -1332,7 +1382,6 @@ import { FilterPanel } from "./components/FilterPanel";
 import { ResultsTable } from "./components/ResultsTable";
 import { ExportDialog } from "./components/ExportDialog";
 import { useDashboardData } from "./hooks/useDashboardData";
-import "./InspectionDashboard.css";
 
 export const InspectionDashboard = observer(function InspectionDashboard(
     props: LayoutElementProperties<InspectionDashboardModel>
@@ -1351,7 +1400,7 @@ export const InspectionDashboard = observer(function InspectionDashboard(
     return (
         <LayoutElement {...props}>
             <ErrorBoundary fallbackMessage="Failed to render inspection dashboard.">
-                <div className="InspectionDashboard">
+                <Stack spacing={2} sx={{ height: "100%", p: 2 }}>
                     <DashboardHeader
                         title={model.title}
                         onExportClick={() => setExportOpen(true)}
@@ -1370,23 +1419,13 @@ export const InspectionDashboard = observer(function InspectionDashboard(
                         onClose={() => setExportOpen(false)}
                         onExport={handleExport}
                     />
-                </div>
+                </Stack>
             </ErrorBoundary>
         </LayoutElement>
     );
 });
 
 export default InspectionDashboard;
-```
-
-##### Co-Located Coordinator Styles (`InspectionDashboard.css`)
-```css
-.InspectionDashboard {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: var(--spacingLg, 16px);
-}
 ```
 
 ##### 2. Custom Business Hook (`hooks/useDashboardData.ts` < 80 lines)
@@ -1448,8 +1487,7 @@ export function useDashboardData(model: InspectionDashboardModel) {
 ##### 3. Header Sub-Component (`components/DashboardHeader.tsx` < 50 lines)
 ```tsx
 import * as React from "react";
-import { Box, Typography, Button } from "@mui/material";
-import "./DashboardHeader.css";
+import { Button, Stack, Typography } from "@mui/material";
 
 interface DashboardHeaderProps {
     title: string;
@@ -1458,32 +1496,22 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ title, onExportClick }: DashboardHeaderProps): React.ReactElement {
     return (
-        <Box className="DashboardHeader">
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="h6">
                 {title}
             </Typography>
             <Button variant="contained" color="primary" onClick={onExportClick}>
                 Export
             </Button>
-        </Box>
+        </Stack>
     );
 }
 ```
 
-`components/DashboardHeader.css`:
-```css
-.DashboardHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacingLg, 16px);
-}
-```
+The parent `Stack spacing={2}` separates the header from the next section, so the header carries no bottom margin.
 
 ##### 4. Pure Formatting Utility (`utils/tableFormatters.ts` < 40 lines)
 ```typescript
-import { UI_TOKENS } from "../../tokens";
-
 /**
  * Formats an ISO date string into a user-facing localized timestamp.
  */
@@ -1494,12 +1522,13 @@ export function formatTimestamp(isoString: string): string {
 }
 
 /**
- * Computes the semantic token color corresponding to an inspection severity score.
+ * Maps an inspection severity score to a `data-severity` value; the row colour for
+ * `&[data-severity="high"]` etc. lives in src/tokens/muiTheme.ts (MuiTableRow styleOverrides).
  */
-export function getSeverityColor(score: number): string {
-    if (score >= 80) return UI_TOKENS.status.errorFg;
-    if (score >= 50) return UI_TOKENS.status.warningFg;
-    return UI_TOKENS.status.successFg;
+export function getSeverityLevel(score: number): "high" | "medium" | "low" {
+    if (score >= 80) return "high";
+    if (score >= 50) return "medium";
+    return "low";
 }
 ```
 
@@ -1515,7 +1544,10 @@ Before submitting a VertiGIS component or extension for code review, verify adhe
 | | Zero hardcoded colors | No raw hex (`#...`), static RGB, or HSL strings in component files. |
 | | Color mixing | Opacity and surface blends use `alphaMix()` or `surfaceMix()` via CSS `color-mix()`. |
 | **Dual-Theme Safety** | Reactive theme awareness | Components needing theme state in React use `useIsDarkTheme()`. |
-| | Host Theme & Namespaced CSS | Components inherit host theme natively via tokens; all CSS classes are strictly namespaced (e.g. `.ListHeader`). |
+| | Host Theme & Namespaced CSS | Components inherit host theme natively via tokens; all CSS classes (optional files) are strictly namespaced (e.g. `.ListHeader`). |
+| **Styling** | Zero cosmetic `sx` | `sx` / `style` / style dictionaries hold layout, geometry and spacing only; cosmetics live in `src/tokens/muiTheme.ts` (`NO_COSMETIC_SX`). |
+| | 8px grid | Spacing values are `0, 0.5, 1, 1.5, 2, 2.5, 3, 4`; siblings are spaced by parent `gap` / `Stack spacing` (`STANDARDIZED_SPACING`). |
+| | Declarative state & containment | State is a data attribute (`data-status`) styled in the theme; `<canvas>`, `<img>`, `<iframe>` sit inside `Paper` / `Card` (`NON_MUI_CONTAINMENT`). `npm run verify:styles` exits 0. |
 | | UI Library Safety | Never import UI controls from `@vertigis/web/ui` (causes fatal UIContext crash outside shell). |
 | **Modularity & Architecture** | File size compliance | Every file is under 150 lines (target) and strictly below 250 lines (ceiling). |
 | | Directory blueprint | Complex components use `components/`, `hooks/`, `utils/`, and `types/` sub-directories. |

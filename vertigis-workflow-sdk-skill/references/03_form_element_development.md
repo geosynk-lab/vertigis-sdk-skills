@@ -2,7 +2,7 @@
 
 ## 1. Form Element Canonical Pattern (MUI & Design Tokens Required)
 
-A single `main.tsx` file defines both the component view and its registration object. **ALWAYS use MUI components (e.g., `<TextField>`, `<Box>`, `<Typography>`), centralized design tokens with guaranteed safe fallbacks, minimum 44x44px mobile touch targets, and `<FormElementErrorBoundary>` encapsulation.**
+A single `main.tsx` file defines both the component view and its registration object. **ALWAYS use MUI components (`<Paper>`, `<Stack>`, `<TextField>`, `<Typography>`), minimum 44x44px mobile touch targets, and `<VertiGisThemeProvider>` + `<FormElementErrorBoundary>` encapsulation.** The host governs cosmetics: surface, border, radius and text styling come from the theme (`src/tokens/muiTheme.ts`), so the element's `sx` carries only layout, geometry and 8px-grid spacing.
 
 For complex elements, refer to [React Component Decomposition](./04_react_component_decomposition.md) to decompose state into `hooks/`, UI into `components/`, and tokens into `tokens/`.
 
@@ -10,8 +10,9 @@ For complex elements, refer to [React Component Decomposition](./04_react_compon
 // src/elements/<Name>/main.tsx
 import * as React from "react";
 import { FormElementProps, FormElementRegistration } from "@vertigis/workflow";
-import { Box, TextField, Typography } from "@mui/material";
-import { tokens, VertiGisThemeProvider } from "./tokens";
+import { Paper, Stack, TextField, Typography } from "@mui/material";
+import { tokens } from "../../tokens";
+import { VertiGisThemeProvider } from "../../tokens/VertiGisThemeProvider";
 import { FormElementErrorBoundary } from "./components/FormElementErrorBoundary";
 
 /**
@@ -51,59 +52,44 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
         setProperty("secondaryStatus", newVal.length >= 6 ? "Valid" : "Too short");
     };
 
-    // 2. Render UI with Typography variants, container tokenization, mobile touch targets & standard prop wiring
-    return (
-        <Box
-            sx={{
-                p: 2,
-                backgroundColor: tokens.ui.surface.secondary,
-                border: `1px solid ${tokens.ui.border.primary}`,
-                borderRadius: tokens.ui.shape.borderRadius,
-                boxShadow: tokens.ui.shape.shadowPrimary,
-                display: "flex",
-                flexDirection: "column",
-                gap: 1.5,
-            }}
-        >
-            {/* Header section showcasing Typography System */}
-            <Box>
-                <Typography variant="subtitle1">
-                    Custom Inspection Field
-                </Typography>
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                >
-                    Enter the field inspection value. Changes persist across workflow form tabs.
-                </Typography>
-            </Box>
+    const tooShort = (value ?? "").length > 0 && (value ?? "").length < 6;
 
-            {/* Input Field: Pure Theme Inheritance. Zero color injection.
-                Inherits notchedOutline borders, hover, focus, and disabled states from ThemeProvider. */}
-            <TextField
-                fullWidth
-                variant="outlined"
-                placeholder={customPlaceholder}
-                value={value ?? ""}
-                disabled={!enabled}
-                helperText="Required minimum 6 characters for valid status."
-                slotProps={{
-                    input: { readOnly },
-                    htmlInput: { "aria-label": "Custom Input Field" },
-                }}
-                onChange={(e) => handleChange(e.currentTarget.value)}
-            />
-        </Box>
+    // 2. Render UI: Paper takes surface, border and radius from the theme; Stack spacing replaces margins
+    return (
+        <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1.5}>
+                <Stack spacing={0.5}>
+                    <Typography variant="subtitle1">Custom Inspection Field</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Enter the field inspection value. Changes persist across workflow form tabs.
+                    </Typography>
+                </Stack>
+
+                {/* Input Field: Pure Theme Inheritance. Error, disabled and focus colours come
+                    from the theme through the error / disabled / helperText props. */}
+                <TextField
+                    fullWidth
+                    placeholder={customPlaceholder}
+                    value={value ?? ""}
+                    disabled={!enabled}
+                    error={tooShort}
+                    helperText="Required minimum 6 characters for valid status."
+                    slotProps={{ htmlInput: { readOnly, "aria-label": "Custom Input Field" } }}
+                    onChange={(e) => handleChange(e.currentTarget.value)}
+                    sx={{ "& .MuiInputBase-root": { minHeight: tokens.ui.touch.minHeight } }}
+                />
+            </Stack>
+        </Paper>
     );
 }
 
 export function MyElement(props: MyElementProps): React.ReactElement {
     return (
-        <FormElementErrorBoundary>
-            <VertiGisThemeProvider>
+        <VertiGisThemeProvider>
+            <FormElementErrorBoundary>
                 <MyElementView {...props} />
-            </VertiGisThemeProvider>
-        </FormElementErrorBoundary>
+            </FormElementErrorBoundary>
+        </VertiGisThemeProvider>
     );
 }
 

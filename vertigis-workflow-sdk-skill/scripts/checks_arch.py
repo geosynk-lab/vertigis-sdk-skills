@@ -4,13 +4,13 @@ from __future__ import annotations
 import posixpath
 import re
 
-from engine import Context, in_tokens_dir, matching_close, string_literals
+from engine import Context, matching_close, string_literals
 
 RULE_IDS = {
     "HANDLES_FIELD_DECLARED", "LIFECYCLE_SUPER_ORDER", "MODEL_VIEW_SEPARATION", "OBSERVER_WRAPPING",
     "LAYOUT_ELEMENT_WRAPPER", "ACTIVE_PROP_HIDING", "ERROR_BOUNDARY", "DESIGNER_EMPTY_ATTRIBUTE",
     "FILE_LENGTH_TARGET", "FILE_LENGTH_CEILING", "FORM_PROPS_WIRING", "ACTIVITY_HANDLER_PATTERN",
-    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "COMPONENT_CSS_PAIR",
+    "BARREL_EXPORT_NAMING", "JSX_IN_TS",
 }
 
 MODEL_BASE = re.compile(r"\bclass\s+\w+[^{]*\bextends\s+(ComponentModelBase|ModelBase)\b")
@@ -23,7 +23,6 @@ VISIBLE_GUARD = re.compile(r"if\s*\(\s*!\s*(?:props\.)?visible\s*\)\s*\{?\s*retu
                            r"!\s*(?:props\.)?visible\s*\?\s*null")
 JSX_SYNTAX = re.compile(r"</[A-Za-z][\w.]*\s*>|<[A-Za-z][\w.]*(?:\s[^<>]*)?/>|</>|"
                         r"(?:return|=>)\s*\(?\s*<[A-Za-z][\w.]*[\s>]")
-JSX_RETURN = re.compile(r"(?:return|=>)\s*\(?\s*<[A-Za-z>]")
 
 
 def template_end(code: str, i: int) -> int:
@@ -66,19 +65,6 @@ def check_jsx_in_ts(ctx: Context, src) -> None:
     m = JSX_SYNTAX.search(without_strings(src.code))
     if m:
         ctx.add("JSX_IN_TS", src, m.start(), m.group(0).strip())
-
-
-def check_css_pair(ctx: Context) -> None:
-    if ctx.single_file:
-        return
-    present = {f.rel for f in ctx.files}
-    for src in ctx.files:
-        if src.kind != "tsx" or src.is_test or in_tokens_dir(src.rel):
-            continue
-        m = JSX_RETURN.search(without_strings(src.code))
-        css = src.rel[:-len(".tsx")] + ".css"
-        if m and css not in present:
-            ctx.add("COMPONENT_CSS_PAIR", src, m.start(), f"missing {posixpath.basename(css)}")
 
 
 def method_body(code: str, name: str):
@@ -186,8 +172,6 @@ def check_arch(ctx: Context) -> None:
                 check_barrel(ctx, src)
     if ctx.sdk == "workflow":
         check_form_elements(ctx)
-    else:
-        check_css_pair(ctx)
 
 
 CHECKS = [check_arch]

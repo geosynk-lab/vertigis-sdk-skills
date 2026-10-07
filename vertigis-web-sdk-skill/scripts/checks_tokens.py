@@ -223,7 +223,7 @@ def check_tsx_tokens(ctx: Context, src, paths: dict) -> None:
 def check_tokens(ctx: Context) -> None:
     paths = token_paths(ctx)
     for src in ctx.files:
-        if src.is_test or in_tokens_dir(src.rel):
+        if src.is_test or (in_tokens_dir(src.rel) and not re.search(r"\bcreateTheme\s*\(", src.code)):
             continue
         if src.kind == "css":
             check_css_tokens(ctx, src, paths)

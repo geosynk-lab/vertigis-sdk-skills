@@ -212,12 +212,12 @@ A rule can be suppressed only with a written reason:
 ```
 The first form covers the next line; the `-file` form covers the whole file. A suppression without a reason, with `*`, or with an unknown rule ID is reported as `INVALID_SUPPRESSION` and cannot itself be suppressed.
 
-### Styling audit test (Web SDK, optional)
-To run the styling rules inside a library's own Vitest suite, install the audit test into the target repository:
+### Zero-Cosmetic-SX check (standalone)
+`scripts/verify_zero_cosmetic_sx.py` (identical in both skills) implements `NO_COSMETIC_SX`, `STANDARDIZED_SPACING` and `NON_MUI_CONTAINMENT`. The validator imports the same file, so there is one source of truth. It can also run on its own:
 ```bash
-python3 vertigis-web-sdk-skill/scripts/install_styling_audit.py --target-dir /path/to/library [--force]
+python3 vertigis-web-sdk-skill/scripts/verify_zero_cosmetic_sx.py /path/to/project
 ```
-This copies `stylingAudit.ts` and `stylingAudit.test.ts` into `<target>/src/utils/`, so `pnpm test` / `npm test` enforces the rules. The target needs `typescript` and `vitest` as dev dependencies.
+Projects generated from the SDK `template-custom` overlays ship a copy as `npm run verify:styles`. Exit `0` = clean, `1` = violations, `2` = bad path.
 
 ---
 

@@ -71,7 +71,7 @@ export class DashboardWidgetModel extends ComponentModelBase {
 // src/components/DashboardWidget/main.tsx
 import * as React from "react";
 import { observer } from "mobx-react-lite";
-import { Box, Typography, Divider } from "@mui/material";
+import { Box, Typography, Divider, Stack } from "@mui/material";
 import {
     LayoutElement,
     LayoutElementProperties,
@@ -88,13 +88,15 @@ const DashboardWidget = observer(function DashboardWidget(props: DashboardWidget
         <LayoutElement {...props}>
             <ErrorBoundary fallbackMessage="Dashboard widget failed to load.">
                 <Box className="DashboardWidget">
-                    <Typography variant="h6" sx={{ mb: 1 }}>
-                        {model.title}
-                    </Typography>
-                    <Divider sx={{ borderColor: "var(--primaryBorder)", my: 1 }} />
-                    <Typography variant="body2" color="text.secondary">
-                        Auto-refresh interval: {model.refreshIntervalSeconds}s
-                    </Typography>
+                    <Stack spacing={1}>
+                        <Typography variant="h6">
+                            {model.title}
+                        </Typography>
+                        <Divider />
+                        <Typography variant="body2" color="text.secondary">
+                            Auto-refresh interval: {model.refreshIntervalSeconds}s
+                        </Typography>
+                    </Stack>
                 </Box>
             </ErrorBoundary>
         </LayoutElement>

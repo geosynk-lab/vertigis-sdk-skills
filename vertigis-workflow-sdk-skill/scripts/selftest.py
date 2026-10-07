@@ -7,14 +7,12 @@ from pathlib import Path
 
 from engine import SEVERITIES, load_catalog, run
 
-REQUIRED_FIELDS = {"id", "sdk", "pillar", "severity", "skill_ref", "audit_id", "summary", "remediation"}
+REQUIRED_FIELDS = {"id", "sdk", "pillar", "severity", "skill_ref", "summary", "remediation"}
 
 
 def catalog_errors(here: Path, implemented: set) -> list[str]:
     errors = []
     sdk, catalog = load_catalog(here / "rules.json")
-    audit_ts = here / "styling-audit" / "stylingAudit.ts"
-    audit_text = audit_ts.read_text(encoding="utf-8") if audit_ts.exists() else None
     for rule_id, entry in catalog.items():
         missing = REQUIRED_FIELDS - set(entry)
         if missing:
@@ -27,10 +25,6 @@ def catalog_errors(here: Path, implemented: set) -> list[str]:
             errors.append(f"{rule_id}: invalid severity {sev}")
         if rule_id not in implemented:
             errors.append(f"{rule_id}: no check implements this rule")
-        audit = entry.get("audit_id")
-        for aid in ([audit] if isinstance(audit, str) else audit or []):
-            if audit_text is not None and f'"{aid}":' not in audit_text:
-                errors.append(f"{rule_id}: audit_id {aid} not in stylingAudit.ts RULES")
     other = "workflow" if sdk == "web" else "web"
     sibling = here.parent.parent / f"vertigis-{other}-sdk-skill" / "scripts" / "rules.json"
     if sibling.exists():
