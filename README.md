@@ -175,6 +175,52 @@ Teaches the AI how to build custom activities and form elements in C# for VertiG
 
 ---
 
+## ✅ Rule Validation
+
+The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (45 Web rules, 26 Workflow rules).
+
+### Run the validator
+```bash
+# Web SDK project
+python3 vertigis-web-sdk-skill/scripts/validate_web_sdk.py --path /path/to/project
+
+# Workflow SDK project
+python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path /path/to/project
+```
+`--path` takes a project root (the validator scans `<path>/src` when it exists) or a single file.
+
+| Option | Purpose |
+|---|---|
+| `--format ansi\|json\|markdown` | Report format (default `ansi`, coloured terminal output). |
+| `--output <file>` | Write the report to a file instead of the terminal. |
+| `--strict` | Also fail on Major violations. |
+| `--rules <file>` | Use a different rule catalog (default: the sibling `rules.json`). |
+| `--self-test` | Check the validator itself against its rule fixtures and the documentation examples. |
+
+### Exit codes and severities
+Each rule has a severity: **critical**, **major** or **minor**.
+- Exit `0`: no Critical violations (with `--strict`: no Critical or Major).
+- Exit `1`: at least one Critical violation (with `--strict`: Critical or Major).
+
+Minor violations are reported but never fail the run. Use the exit code as a gate in CI or after every agent edit.
+
+### Suppressing a rule
+A rule can be suppressed only with a written reason:
+```ts
+// vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- portal content renders outside the shell
+/* vertigis-rule-disable-file INLINE_SX -- <reason> */
+```
+The first form covers the next line; the `-file` form covers the whole file. A suppression without a reason, with `*`, or with an unknown rule ID is reported as `INVALID_SUPPRESSION` and cannot itself be suppressed.
+
+### Styling audit test (Web SDK, optional)
+To run the styling rules inside a library's own Vitest suite, install the audit test into the target repository:
+```bash
+python3 vertigis-web-sdk-skill/scripts/install_styling_audit.py --target-dir /path/to/library [--force]
+```
+This copies `stylingAudit.ts` and `stylingAudit.test.ts` into `<target>/src/utils/`, so `pnpm test` / `npm test` enforces the rules. The target needs `typescript` and `vitest` as dev dependencies.
+
+---
+
 ## Data Exclusions
 Note that the raw HTML/Markdown scraped from the official VertiGIS Developer Center, as well as the Python scraping scripts used to generate these references, are intentionally excluded via `.gitignore` to keep the skill repository clean and focused strictly on AI instructions.
 
