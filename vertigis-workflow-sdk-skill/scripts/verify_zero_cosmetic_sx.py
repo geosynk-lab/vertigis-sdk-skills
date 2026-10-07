@@ -57,7 +57,7 @@ ALLOWED_SPACING_STEPS = (0, 0.5, 1, 1.5, 2, 2.5, 3, 4)
 SPACING_KEYWORDS = {"auto", "0", "inherit", "initial", "unset"}
 NON_MUI_ELEMENTS = frozenset({"canvas", "img", "iframe"})
 MUI_CONTAINERS = frozenset({"Paper", "Card", "CardContent", "CardMedia", "CardActionArea"})
-RULES = ("NO_COSMETIC_SX", "STANDARDIZED_SPACING", "NON_MUI_CONTAINMENT")
+RULES = ("NO_COSMETIC_SX", "STANDARDIZED_SPACING", "NON_MUI_CONTAINMENT", "MARGIN_LEAKAGE")
 
 SKIP_DIRS = {"node_modules", "dist", "build", "coverage", ".git", ".tgrep", ".venv", "__pycache__"}
 NUMBER = re.compile(r"-?(\d+(\.\d+)?|\.\d+)")
@@ -181,6 +181,8 @@ def off_grid(number: str) -> bool:
 def spacing_problem(value: str) -> str | None:
     """Why a spacing value breaks the 8px grid, or None when it is fine or not statically known."""
     v = value.strip().rstrip(";").strip()
+    if re.search(r"\bSPACING\.\w+", v):
+        return None
     if v.startswith(("[", "{")) and matching_close(v, 0) == len(v) - 1:
         items = [p for _, p in split_top(v[1:-1], 0)]
         items = [ENTRY.fullmatch(p).group(5) if v[0] == "{" and ENTRY.fullmatch(p) else p for p in items]
@@ -305,6 +307,24 @@ def check_jsx(code: str, found: list) -> None:
                 problem = spacing_problem(attr[1]) if attr else None
                 if problem:
                     found.append(("STANDARDIZED_SPACING", start + len(name) + 1 + attr[0], f"<{name} {prop}>: {problem}"))
+        if name == "Stack":
+            for m_prop in ("m", "mt", "mb", "my", "mx", "ml", "mr"):
+                if attribute(attrs, m_prop):
+                    found.append(("MARGIN_LEAKAGE", start, f"<Stack {m_prop}>: external margin on Stack; manage spacing on the parent container"))
+            sx_attr = attribute(attrs, "sx")
+            if sx_attr:
+                for m_prop in ("m", "mt", "mb", "my", "mx", "ml", "mr"):
+                    if re.search(rf"(?<![\w$]){m_prop}\s*:", sx_attr[1]):
+                        found.append(("MARGIN_LEAKAGE", start, f"<Stack sx.{{{m_prop}}}>: external margin on Stack; manage spacing on the parent container"))
+        if name == "Divider" and stack and stack[-1] == "Stack":
+            for m_prop in ("m", "mt", "mb", "my"):
+                if attribute(attrs, m_prop):
+                    found.append(("MARGIN_LEAKAGE", start, f"<Divider {m_prop}>: vertical margin on Divider inside Stack; parent Stack spacing manages separation"))
+            sx_attr = attribute(attrs, "sx")
+            if sx_attr:
+                for m_prop in ("m", "mt", "mb", "my"):
+                    if re.search(rf"(?<![\w$]){m_prop}\s*:", sx_attr[1]):
+                        found.append(("MARGIN_LEAKAGE", start, f"<Divider sx.{{{m_prop}}}>: vertical margin on Divider inside Stack; parent Stack spacing manages separation"))
         if not code[end - 1] == "/":
             stack.append(name)
 

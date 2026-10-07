@@ -490,7 +490,7 @@ VertiGIS Studio Web enforces a strict, tokenized design architecture. Custom com
 
 ### 4.1 Typography System
 
-All textual content in VertiGIS Web components must be rendered through `@mui/material` `<Typography>` components. **Raw HTML text tags (`<span>`, `<p>`, `<h1>`-`<h6>`, `<strong>`, `<em>`) are strictly prohibited.**
+All textual content in VertiGIS Web components must be rendered through `@mui/material` `<Typography>` components. **Raw HTML text containers (`<span>`, `<p>`, `<h1>`-`<h6>`, `<label>`) and standalone formatting tags (`<b>`, `<strong>`, `<i>`, `<em>`, `<u>`) outside `<Typography>` are strictly prohibited.** Inline phrasing elements (`<strong>`, `<em>`) are permitted *strictly inside* `<Typography>` as semantic inline emphasis.
 
 #### MUI Typography Variant Reference
 | Variant | Semantic Purpose | Typical Usage | Standard Foreground Token |

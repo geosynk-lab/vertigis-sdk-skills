@@ -9,6 +9,7 @@ RULE_IDS = {
     "CSS_ROOT_SCOPE", "TOKEN_REALIAS", "FONT_FAMILY", "HARDCODED_RADIUS", "HARDCODED_COLOR",
     "TOKEN_FALLBACK_DRIFT", "CSS_GENERIC_CLASS", "CSS_MUI_OVERRIDE", "CSS_IMPORTANT",
     "CSS_ORPHAN_CLASS", "CSS_DUPLICATE_CLASS", "WORKFLOW_CSS_FILE", "REDUNDANT_DECLARATION", "HARDCODED_SPACING",
+    "EMPTY_CSS_FILE",
 }
 
 SELECTOR = re.compile(r"([^{};]+)\{")
@@ -90,6 +91,10 @@ def check_css(ctx: Context) -> None:
     for src in css_files:
         if re.search(r"(^|/)elements/", src.rel):
             ctx.add_line("WORKFLOW_CSS_FILE", src.rel, 1, src.rel)
+        clean = re.sub(r"/\*.*?\*/", "", src.code, flags=re.S).strip()
+        if not clean or not SELECTOR.search(clean):
+            ctx.add_line("EMPTY_CSS_FILE", src.rel, 1, f"{src.rel} has no CSS rules; remove file and imports")
+            continue
         check_selectors(ctx, src, classes, top_level)
         check_declarations(ctx, src)
         check_redundant(ctx, src)

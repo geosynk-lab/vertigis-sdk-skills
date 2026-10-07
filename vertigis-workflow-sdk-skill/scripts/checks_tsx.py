@@ -16,6 +16,8 @@ RULE_IDS = {
 } | set(zero_cosmetic.RULES)
 
 RAW_TEXT_TAGS = {"p", "span", "label", "h1", "h2", "h3", "h4", "h5", "h6"}
+PHRASING_TAGS = {"b", "strong", "i", "em", "u"}
+MARGIN_PROPS = {"m", "mx", "my", "mt", "mb", "ml", "mr", "margin", "marginTop", "marginBottom", "marginLeft", "marginRight", "marginX", "marginY"}
 CLICKABLE_TAGS = {"div", "span", "Box", "Stack", "Paper", "Card"}
 LEGACY_PROPS = re.compile(r"(?<![\w-])(InputProps|inputProps|PaperProps|BackdropProps|onBackdropClick)\s*=")
 STATIC_VALUE = re.compile(r"^([\"'][^\"'$]*[\"']|`[^`$]*`|-?\d+(\.\d+)?|true|false|[A-Z_]+_TOKENS(\.\w+)+)$")
@@ -169,8 +171,22 @@ def check_nesting(ctx: Context, src, tags: list) -> None:
         tag, decl = item
         if stack:
             parent = stack[-1][1]
+            parent_tag = stack[-1][0]
             if plain(parent.get("display", "")) in FLEX_DISPLAY and plain(decl.get("display", "")) == "block":
                 ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> display: block inside a flex/grid parent")
+            if parent_tag.name == "Stack" and tag.name == "Divider":
+                if any(k in decl or tag.has(k) for k in ("my", "mt", "mb", "margin", "marginTop", "marginBottom", "marginY")):
+                    ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Divider> inside <Stack> has vertical margin; parent Stack spacing manages separation")
+        if tag.name == "Stack":
+            if any(k in decl or tag.has(k) for k in MARGIN_PROPS):
+                ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Stack> declares external margin; manage spacing on the parent container")
+        if tag.name in PHRASING_TAGS and not tag.self_closing:
+            ancestors = [t.name for t, _ in stack]
+            if "Typography" not in ancestors:
+                rest = src.code[tag.end + 1:]
+                child = rest[:rest.find("<")] if "<" in rest else rest
+                if child.strip():
+                    ctx.add("RAW_HTML_TEXT", src, tag.start, f"<{tag.name}> outside <Typography>; use <Typography variant=\"...\"> or wrap inline phrasing inside <Typography>")
         if not tag.self_closing:
             stack.append((tag, decl))
 

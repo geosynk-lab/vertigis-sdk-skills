@@ -5,7 +5,8 @@ import re
 
 from engine import Context, in_tokens_dir, matching_close, split_top_level
 
-RULE_IDS = {"REDUNDANT_INHERITED_TOKEN", "TOKEN_PAIRING", "TOKEN_CONTRAST"}
+RULE_IDS = {"REDUNDANT_INHERITED_TOKEN", "TOKEN_PAIRING", "TOKEN_CONTRAST", "SPACING_TOKENS_DECLARED"}
+REQUIRED_SPACING_ROLES = {"inlineGap", "controlGap", "fieldGap", "sectionGap", "cardPadding", "panelPadding"}
 
 INHERITED_TEXT = "primaryForeground"
 INHERITED_SURFACE = "primaryBackground"
@@ -220,6 +221,28 @@ def check_tsx_tokens(ctx: Context, src, paths: dict) -> None:
             ctx.add("REDUNDANT_INHERITED_TOKEN", src, m.start(), 'color="text.primary" overrides the inherited host colour')
 
 
+def check_spacing_tokens(ctx: Context) -> None:
+    if ctx.single_file:
+        return
+    tokens_dir_files = [f for f in ctx.files if in_tokens_dir(f.rel) and not f.is_test]
+    if not tokens_dir_files:
+        return
+    has_full_tokens = any(f.rel.endswith("tokens/index.ts") for f in tokens_dir_files)
+    spacing_file = next((f for f in tokens_dir_files if f.rel.endswith("tokens/spacing.ts")), None)
+    if has_full_tokens and not spacing_file:
+        ref_file = tokens_dir_files[0]
+        ctx.add_line("SPACING_TOKENS_DECLARED", ref_file.rel, 1, "missing src/tokens/spacing.ts; declare SPACING tokens")
+        return
+    if spacing_file:
+        code = spacing_file.code
+        if not re.search(r"\bexport\s+const\s+SPACING\b", code):
+            ctx.add_line("SPACING_TOKENS_DECLARED", spacing_file.rel, 1, "SPACING constant is not exported")
+            return
+        missing = [role for role in REQUIRED_SPACING_ROLES if not re.search(rf"\b{role}\s*:", code)]
+        if missing:
+            ctx.add_line("SPACING_TOKENS_DECLARED", spacing_file.rel, 1, f"SPACING missing required roles: {', '.join(sorted(missing))}")
+
+
 def check_tokens(ctx: Context) -> None:
     paths = token_paths(ctx)
     for src in ctx.files:
@@ -231,4 +254,4 @@ def check_tokens(ctx: Context) -> None:
             check_tsx_tokens(ctx, src, paths)
 
 
-CHECKS = [check_tokens]
+CHECKS = [check_tokens, check_spacing_tokens]

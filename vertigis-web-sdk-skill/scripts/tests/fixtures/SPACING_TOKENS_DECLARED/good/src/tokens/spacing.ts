@@ -1,0 +1,15 @@
+export const SPACING = {
+    none: 0,
+    xs: 0.5,
+    sm: 1,
+    md: 1.5,
+    lg: 2,
+    xl: 3,
+    xxl: 4,
+    inlineGap: 0.5,
+    controlGap: 1,
+    fieldGap: 1.5,
+    sectionGap: 2,
+    cardPadding: 1.5,
+    panelPadding: 2,
+} as const;
