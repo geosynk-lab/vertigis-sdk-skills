@@ -41,7 +41,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 - **Strict Ban on `<CssBaseline />`**: NEVER mount `<CssBaseline />` under `VertiGisThemeProvider` or anywhere in form elements. Custom form elements execute as guest widgets inside the host shell (`.vsw-app` or Mobile container). `<CssBaseline />` injects global CSS resets (`html`, `body`, scrollbars, box-sizing) that clobber the host application shell, corrupt mobile viewport scaling, and break Esri map layouts.
 - **MUI v7 `slotProps` Standardization**: Standardize on `slotProps` for composite controls. Legacy nested props (`inputProps`, `InputProps`, `BackdropProps`, `PaperProps`) are deprecated. For example, use `<TextField slotProps={{ input: { readOnly } }}>` and `<Dialog slotProps={{ paper: { className: "..." } }}>`. In modals, use `onClose` instead of deprecated `onBackdropClick`.
 - **Type-Safe Style Dictionaries (`Record<string, SxProps<Theme>>`)**: When custom MUI styles are genuinely necessary beyond theme defaults, do not scatter verbose inline `sx={{ ... }}` objects across markup. Define type-safe dictionaries at the top of the file: `const styles: Record<string, SxProps<Theme>> = { ... }` (or `ComponentName.styles.ts` for files >= 100 lines).
-- **Crash Prevention**: NEVER pass raw `var(...)` strings into `palette.primary.main` or `palette.error.main` (causes MUI `augmentColor()` to crash). Attach CSS variables via component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } } }`).
+- **Crash Prevention**: NEVER pass raw `var(...)` strings (including any `UI_TOKENS.*` value) into `palette.primary.main` or `palette.error.main` (causes MUI `augmentColor()` to crash). Attach CSS variables via component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } } }`). The same `MUI: Unsupported var(...) color` error is thrown by `alpha()`, `darken()`, `lighten()`, `emphasize()`, `getContrastRatio()` and `<Link color={token}>`; use `color-mix(in srgb, ...)` and `sx={{ color: token }}` instead.
 - **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, signature pads, barcode viewfinders, PDF exports, SVG vector paths).
 - **Standardized Token Architecture**: Group all tokens under a `tokens/` directory:
   - `tokens/ui.ts`: Surface, border, foreground, accent, interactive, status, touch, and unified shape tokens (`borderRadius`, `borderRadiusSm`, `borderRadiusLarge`, `borderRadiusLg`, `borderRadiusRound`, `borderRadiusPill`).
@@ -77,8 +77,13 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 - **State Persistence (Surviving Tab Remounts)**: Form element state MUST be saved via `props.setValue()` or `props.setProperty()`. NEVER rely on ephemeral local React `useState` for critical business data, as form elements unmount and remount when users navigate between form tabs or workflow steps.
 - **Defensive Activities**: Workflow Activities MUST wrap core execution logic in `try/catch` blocks and throw structured `Error` objects so the workflow engine can handle failures gracefully.
 
-## 6. Rule Validator Gate
-- After every code edit, `python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path .` MUST exit 0. Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`."""
+## 6. Verification & Rule Validator Gate
+- After every code edit, run all of these and report each exit code. A passing build and lint is NOT a passing gate. Skip a step only when its script does not exist in `package.json`, and say so:
+  1. `tsc --noEmit` (clean types).
+  2. `npm run lint` (zero errors).
+  3. `npm test` (all tests pass).
+  4. `npm run build` (clean compilation).
+  5. `python3 <skill-dir>/scripts/validate_workflow_sdk.py --path .` MUST exit 0, where `<skill-dir>` is the installed `vertigis-workflow-sdk-skill` folder (e.g. `~/.agents/skills/vertigis-workflow-sdk-skill`). Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`."""
 
 VERTIGIS_DIRECTIVES = f"{START_MARKER}\n{DIRECTIVES_BODY}\n{END_MARKER}"
 
