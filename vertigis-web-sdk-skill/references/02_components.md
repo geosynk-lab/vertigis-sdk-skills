@@ -200,19 +200,19 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 export default MyWidget;
 ```
 
-Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
+Global layout lives in `src/styles/app.css` (component-level CSS files in `src/components/` are prohibited):
 
 ```css
-.MyWidget {
+.app-layout {
     padding: var(--spacingLg, 16px);
 }
 
-.MyWidget--bordered {
+.app-layout--bordered {
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
 
-.MyWidget-surface {
+.app-layout-surface {
     margin-bottom: var(--spacingLg, 16px);
     padding: var(--spacingMd, 12px);
     border: 1px solid var(--primaryBorder, #e0e0e0);
@@ -220,7 +220,7 @@ Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
     background-color: var(--secondaryBackground, #f5f5f5);
 }
 
-.MyWidget-row {
+.app-layout-row {
     margin-bottom: var(--spacingSm, 8px);
 }
 

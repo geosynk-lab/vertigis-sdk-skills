@@ -13,6 +13,7 @@ RULE_IDS = {
     "DIALOG_GLOBAL_OVERRIDE", "HARDCODED_COLOR", "INLINE_TOKEN_LITERAL", "TOKEN_FALLBACK_DRIFT",
     "FONT_FAMILY", "HARDCODED_RADIUS", "PALETTE_CSS_VAR", "THEME_HARDCODED_PALETTE", "THEME_DYNAMIC_HOOK",
     "DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "ARCGIS_IMPORT_STYLE", "REDUNDANT_DECLARATION",
+    "DISABLED_TOOLTIP_WRAPPER", "UNSCOPED_THEME_OVERRIDE",
 } | set(zero_cosmetic.RULES)
 
 RAW_TEXT_TAGS = {"p", "span", "label", "h1", "h2", "h3", "h4", "h5", "h6"}
@@ -172,6 +173,8 @@ def check_nesting(ctx: Context, src, tags: list) -> None:
         if stack:
             parent = stack[-1][1]
             parent_tag = stack[-1][0]
+            if parent_tag.name == "Tooltip" and tag.name in ("Button", "IconButton") and tag.has("disabled"):
+                ctx.add("DISABLED_TOOLTIP_WRAPPER", src, tag.start, f"<{tag.name} disabled> directly inside <Tooltip>; wrap in <span> or <Box component=\"span\"> so pointer events fire")
             if plain(parent.get("display", "")) in FLEX_DISPLAY and plain(decl.get("display", "")) == "block":
                 ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> display: block inside a flex/grid parent")
             if parent_tag.name == "Stack" and tag.name == "Divider":
@@ -234,6 +237,10 @@ def check_properties(ctx: Context, src) -> None:
     for index, block in block_after(code, r"\bMuiTypography\s*:\s*\{"):
         if re.search(r"(?<![\w-])color\s*:", block):
             ctx.add("THEME_HARDCODED_PALETTE", src, index, "MuiTypography color override blocks color= props")
+    for comp in ("MuiCard", "MuiTableCell", "MuiPaper"):
+        for index, block in block_after(code, rf"\b{comp}\s*:\s*\{{"):
+            for m in re.finditer(r"[\"']?(&\[data-status=[^\]]+\])[\"']?\s*:", block):
+                ctx.add("UNSCOPED_THEME_OVERRIDE", src, index, f"{comp} overrides unscoped state selector: {m.group(1)}; prefix with component class (e.g. &.MyComponent-root[data-status=...])")
     if renderer and not re.search(r"\b(useIsDarkTheme|useDarkTheme|isDarkTheme|isDark)\b", code):
         ctx.add("THEME_DYNAMIC_HOOK", src, renderer.start(), renderer.group(0))
 

@@ -5,7 +5,7 @@ import re
 
 from engine import Context, in_tokens_dir, matching_close, split_top_level
 
-RULE_IDS = {"REDUNDANT_INHERITED_TOKEN", "TOKEN_PAIRING", "TOKEN_CONTRAST", "SPACING_TOKENS_DECLARED"}
+RULE_IDS = {"REDUNDANT_INHERITED_TOKEN", "TOKEN_PAIRING", "TOKEN_CONTRAST", "SPACING_TOKENS_DECLARED", "TOKEN_EXACT_NAME"}
 REQUIRED_SPACING_ROLES = {"inlineGap", "controlGap", "fieldGap", "sectionGap", "cardPadding", "panelPadding"}
 
 INHERITED_TEXT = "primaryForeground"
@@ -223,6 +223,15 @@ def check_tsx_tokens(ctx: Context, src, paths: dict) -> None:
 
 def check_spacing_tokens(ctx: Context) -> None:
     if ctx.single_file:
+        for src in ctx.files:
+            if re.search(r"(^|/)tokens/spacing\.ts$", src.rel):
+                code = src.code
+                if not re.search(r"\bexport\s+const\s+SPACING\b", code):
+                    ctx.add_line("SPACING_TOKENS_DECLARED", src.rel, 1, "SPACING constant is not exported")
+                    return
+                missing = [role for role in REQUIRED_SPACING_ROLES if not re.search(rf"\b{role}\s*:", code)]
+                if missing:
+                    ctx.add_line("SPACING_TOKENS_DECLARED", src.rel, 1, f"SPACING missing required roles: {', '.join(sorted(missing))}")
         return
     tokens_dir_files = [f for f in ctx.files if in_tokens_dir(f.rel) and not f.is_test]
     if not tokens_dir_files:
@@ -243,6 +252,27 @@ def check_spacing_tokens(ctx: Context) -> None:
             ctx.add_line("SPACING_TOKENS_DECLARED", spacing_file.rel, 1, f"SPACING missing required roles: {', '.join(sorted(missing))}")
 
 
+DOMAIN_STATUS_ALIAS = re.compile(
+    r"\b(open|closed|inProgress|completed|archived|pending|draft|statusOpen|statusClosed|statusInProgress|statusCompleted|statusArchived)(Main|Fg|Bg|Border|Text)?\b\s*:\s*[\"']var\(--([\w-]+)"
+)
+
+
+def check_ui_tokens(ctx: Context) -> None:
+    for src in ctx.files:
+        if not re.search(r"(^|/)tokens/ui\.ts$", src.rel):
+            continue
+        for m in DOMAIN_STATUS_ALIAS.finditer(src.code):
+            key = m.group(1) + (m.group(2) or "")
+            var_name = m.group(3)
+            ctx.add("TOKEN_EXACT_NAME", src, m.start(),
+                    f"Token key '{key}' remaps host variable '--{var_name}'; use exact host name '{var_name}' to avoid confusion")
+        for m in re.finditer(r"var\(\s*--([\w-]+)\s*(?:,\s*([^)]*))?\)", src.code):
+            fallback = (m.group(2) or "").strip()
+            if not fallback:
+                ctx.add("TOKEN_EXACT_NAME", src, m.start(),
+                        f"Token {m.group(0)} is missing a safe WCAG AA fallback value")
+
+
 def check_tokens(ctx: Context) -> None:
     paths = token_paths(ctx)
     for src in ctx.files:
@@ -254,4 +284,4 @@ def check_tokens(ctx: Context) -> None:
             check_tsx_tokens(ctx, src, paths)
 
 
-CHECKS = [check_tokens, check_spacing_tokens]
+CHECKS = [check_tokens, check_spacing_tokens, check_ui_tokens]

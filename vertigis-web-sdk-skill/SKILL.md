@@ -266,7 +266,7 @@ const CustomWidget = observer(function CustomWidget(props: CustomWidgetProps) {
 export default CustomWidget;
 ```
 
-#### Co-Located Component CSS (`src/components/CustomWidget/CustomWidget.css`)
+#### Global Stylesheet (`src/styles/app.css`)
 ```css
 .CustomWidget {
     padding: var(--spacingLg, 16px);
