@@ -139,3 +139,88 @@ When deploying or publishing a custom web application through **VertiGIS Studio 
   - [ ] Alternatively, register handles directly into the inherited base instance via `this._handles.add(...)` without declaring a child property.
   - [ ] Verify symmetric lifecycle sequencing: `await super._onInitialize()` MUST be called **first** in `_onInitialize()`; child resource cleanup must run **first** and `await super._onDestroy()` MUST be called **last** in `_onDestroy()`.
 
+### I. Production OAuth Isolation & Webpack 5 Optimization
+
+When deploying a custom extension library to production environments (such as on-premise ArcGIS Enterprise Portal or ArcGIS Online host shells, e.g. `gis-prod.cimic.com.au`):
+
+#### 1. Host Identity Hijacking Prevention (Zero Dev OAuth in Production)
+- **Root Cause**: VertiGIS Studio Web is a guest library loaded inside an ArcGIS Enterprise host application shell. The host application manages user session tokens and Portal authentication natively.
+- **The Pitfall**: Calling `initPortalAuth()` at module evaluation time in `src/index.ts` unconditionally registers an `OAuthInfo` pointing to development callback URLs (such as `https://localtest.me:3001/oauth_callback.html` or `https://localhost:3001`) with ArcGIS `IdentityManager`. In production, this hijacks the host's authentication flow and throws `ERR_CONNECTION_REFUSED`.
+- **Mandatory Guard Pattern**:
+  Always guard development authentication with `if (process.env.NODE_ENV !== "production")`:
+  ```typescript
+  // src/index.ts
+  if (process.env.NODE_ENV !== "production") {
+      initPortalAuth();
+  }
+  ```
+  In production compilation, Webpack's `DefinePlugin` and `TerserPlugin` evaluate this condition as false and eliminate the entire call as dead code.
+- **Defense in Depth (`src/auth/index.ts`)**:
+  ```typescript
+  export function initPortalAuth(): void {
+      if (process.env.NODE_ENV === "production") return;
+      if (!portalConfig?.enabled || !portalConfig?.portal || !portalConfig?.appId) return;
+
+      const callbackOrigin = typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : "https://localhost:3001";
+      // ...
+  }
+  ```
+
+#### 2. Streamlined Webpack 5 Configuration & Filesystem Caching
+- **Avoid DevServer Leaks**: Do not attach reverse-proxy bridges (`setupDualPortBridge`), custom middleware, or hardcoded `localtest.me` hosts directly to the top-level Webpack configuration.
+- **Environment Isolation**: Condition devServer options so nothing is evaluated during production builds (`NODE_ENV === "production"`).
+- **Persistent Filesystem Cache**: Webpack 5 rebuild times drop from ~18s to <2s by enabling filesystem cache in `webpack.config.js`:
+  ```javascript
+  import defaultWebpackConfig, { merge } from "@vertigis/web-sdk/config/webpack.config.js";
+
+  const isProduction = process.env.NODE_ENV === "production";
+
+  export default merge(defaultWebpackConfig, {
+      cache: {
+          type: "filesystem",
+          buildDependencies: {
+              config: [import.meta.filename],
+          },
+      },
+      ...(isProduction
+          ? {}
+          : {
+                devServer: {
+                    port: 3001,
+                    allowedHosts: "all",
+                },
+            }),
+  });
+  ```
+
+#### 3. Post-Build Production Sanity Audit
+Always verify before packaging that zero development hostnames or redirect callbacks leaked into `build/main.js`:
+```bash
+grep -F "localtest.me" build/main.js && echo "ERROR: dev URL leaked!" || echo "AUDIT PASSED"
+```
+
+#### 4. Deterministic Multi-Stage Docker Builds
+Use `Dockerfile.build` in CI/CD pipelines to ensure clean, isolated builds without local environment drift:
+```dockerfile
+# syntax=docker/dockerfile:1.4
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* package-lock.json* ./
+RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else npm ci; fi
+COPY . .
+ENV NODE_ENV=production
+RUN npm run build
+RUN if grep -Fq "localtest.me" build/main.js; then exit 1; fi
+
+FROM scratch AS exporter
+COPY --from=builder /app/build/ /
+```
+Build and extract directly:
+```bash
+docker build -f Dockerfile.build --target exporter --output build/ .
+```
+
+
