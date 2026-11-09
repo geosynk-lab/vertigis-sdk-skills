@@ -3,7 +3,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [1. Creating the Component Model](#1-creating-the-component-model)
-  - [Advanced `@serializable` Options](#advanced-serializable-options)
+  - [Advanced Serialization Options (`PropertyDef`)](#advanced-serialization-options-propertydef)
 - [2. Creating the React View (MUI + LayoutElement Required)](#2-creating-the-react-view-mui--layoutelement-required)
   - [Exposing Configuration Parameters & Web Designer Settings Schema Protocol](#-exposing-configuration-parameters--web-designer-settings-schema-protocol)
 - [3. Creating and Registering Custom SVG Icons](#3-creating-and-registering-custom-svg-icons)
@@ -30,22 +30,32 @@ The model manages the component's state, participates in app configuration, and 
 
 ```typescript
 // src/components/MyWidget/MyWidgetModel.ts
-import { ComponentModelBase, serializable, importModel, exportModel } from "@vertigis/web/models";
+import {
+    ComponentModelBase,
+    serializable,
+    importModel,
+    exportModel,
+    type ComponentModelProperties,
+    type PropertyDefs,
+} from "@vertigis/web/models";
 import { MapModel } from "@vertigis/web/mapping";
 
-// Mark with @exportModel if child components need to import this model
+// 1. Declare the config properties (the shape of this component's entry in app-config.json)
+export interface MyWidgetModelProperties extends ComponentModelProperties {
+    greetingText?: string;
+    refreshInterval?: number;
+    autoStart?: boolean;
+}
+
+// Mark with @exportModel if child components need to import this model.
+// `@serializable` is a CLASS decorator only. It takes no arguments and is NEVER put on a property.
 @exportModel
 @serializable
-export class MyWidgetModel extends ComponentModelBase {
-    // 1. Serializable properties (configurable in app-config.json)
-    @serializable(String)
-    greetingText: string = "Hello VertiGIS!";
-
-    @serializable(Number)
-    refreshInterval: number = 30;
-
-    @serializable(Boolean)
-    autoStart: boolean = true;
+export class MyWidgetModel extends ComponentModelBase<MyWidgetModelProperties> {
+    // Config-backed fields (registered in _getSerializableProperties below)
+    greetingText = "Hello VertiGIS!";
+    refreshInterval = 30;
+    autoStart = true;
 
     // 2. Observable runtime state (not saved in config)
     count: number = 0;
@@ -56,6 +66,17 @@ export class MyWidgetModel extends ComponentModelBase {
 
     // Domain-specific handle collection (NEVER name this `_handles`)
     private _eventHandles: { remove(): void }[] = [];
+
+    // Register the config properties. Always spread the base defs FIRST,
+    // or the base properties (id, title, ...) stop loading from config.
+    protected override _getSerializableProperties(): PropertyDefs<MyWidgetModelProperties> {
+        return {
+            ...super._getSerializableProperties(),
+            greetingText: { serializeModes: ["initial"], default: "Hello VertiGIS!" },
+            refreshInterval: { serializeModes: ["initial"], default: 30 },
+            autoStart: { serializeModes: ["initial"], default: true },
+        };
+    }
 
     // Lifecycle Hook: Initialization (Base FIRST)
     protected async _onInitialize(): Promise<void> {
@@ -78,19 +99,37 @@ export class MyWidgetModel extends ComponentModelBase {
 }
 ```
 
-### Advanced `@serializable` Options
-You can provide type constructors or custom serializer/deserializer functions for complex properties:
-```typescript
-@serializable(Array)
-selectedIds: string[] = [];
+### Advanced Serialization Options (`PropertyDef`)
+> ⚠️ `@serializable` is a **class** decorator only (`serializable(SerializableClass)`). Forms like `@serializable(String)`, `@serializable(Array)`, or `@serializable({ ... })` on a property do **not** exist in the SDK and fail to type-check. Configure each property in `_getSerializableProperties()` instead.
 
-// Custom Serializer for Date objects
-@serializable({
-    serializer: (val: Date) => val?.toISOString(),
-    deserializer: (raw: string) => raw ? new Date(raw) : undefined
-})
-lastInspectedDate?: Date;
+Each entry in `PropertyDefs<T>` is a `PropertyDef`, a list of serialize modes, or one serialize mode:
+
+| Field | Purpose |
+|---|---|
+| `serializeModes` | When the property is written: `"initial"`, `"project"`, `"preferences"`, `"all"` |
+| `default` | Default value. Values equal to it are left out of exported config |
+| `isDefault` | Custom check for "is this the default?" |
+| `serialize` | `(mode) => value` to write the property, or `false` to never write it |
+| `deserialize` | `(config) => void \| Promise<void>` to read the property, or `false` to never read it |
+
+```typescript
+protected override _getSerializableProperties(): PropertyDefs<MyWidgetModelProperties> {
+    return {
+        ...super._getSerializableProperties(),
+        // Short form: a list of serialize modes
+        selectedIds: ["initial", "project"],
+        // Custom (de)serialization for a non-primitive value (config holds an ISO string)
+        lastInspectedDate: {
+            serializeModes: ["initial"],
+            serialize: () => this.lastInspectedDate?.toISOString(),
+            deserialize: (raw) => {
+                this.lastInspectedDate = raw ? new Date(raw) : undefined;
+            },
+        },
+    };
+}
 ```
+(Here `MyWidgetModelProperties` declares `selectedIds?: string[]` and `lastInspectedDate?: string`, because the config holds the string form.)
 
 ---
 
@@ -237,7 +276,12 @@ The model class should expose an `updateConfig(...)` method so settings changes 
 
 ```typescript
 // src/components/MyWidget/MyWidgetModel.ts
-import { ComponentModelBase, serializable } from "@vertigis/web/models";
+import {
+    ComponentModelBase,
+    serializable,
+    type ComponentModelProperties,
+    type PropertyDefs,
+} from "@vertigis/web/models";
 
 export interface MyWidgetConfig {
     customConfigParam?: string;
@@ -245,19 +289,25 @@ export interface MyWidgetConfig {
     showBorder?: boolean;
 }
 
+export interface MyWidgetModelProperties extends ComponentModelProperties, MyWidgetConfig {}
+
 @serializable
-export class MyWidgetModel extends ComponentModelBase {
-    @serializable
-    customConfigParam: string = "Default";
+export class MyWidgetModel extends ComponentModelBase<MyWidgetModelProperties> {
+    customConfigParam = "Default";
+    refreshInterval = 30;
+    showBorder = false;
 
-    @serializable
-    refreshInterval: number = 30;
+    // Runtime state: NOT registered below, so it is not saved in config
+    count = 0;
 
-    @serializable
-    showBorder: boolean = false;
-
-    @serializable
-    count: number = 0;
+    protected override _getSerializableProperties(): PropertyDefs<MyWidgetModelProperties> {
+        return {
+            ...super._getSerializableProperties(),
+            customConfigParam: { serializeModes: ["initial"], default: "Default" },
+            refreshInterval: { serializeModes: ["initial"], default: 30 },
+            showBorder: { serializeModes: ["initial"], default: false },
+        };
+    }
 
     greetingText: string = "Hello VertiGIS Studio Web";
 

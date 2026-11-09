@@ -7,7 +7,7 @@
       "expected_output": "A production-ready VertiGIS Studio Web component decomposed into a Model (*Model.ts) and View (*.tsx), wrapped with LayoutElement, using MUI Typography and safe fallback design tokens.",
       "files": [],
       "expectations": [
-        "Component model extends ComponentModelBase and uses @serializable decorators",
+        "Component model extends ComponentModelBase and uses the @serializable class decorator and registers config properties in _getSerializableProperties() (no @serializable on properties)",
         "React View wraps JSX inside LayoutElement imported from @vertigis/web/components",
         "All textual elements use @mui/material Typography with variant and semantic color tokens, with zero raw HTML text elements",
         "CSS custom properties include safe fallbacks (e.g., var(--primaryBackground, #ffffff))",

@@ -68,7 +68,7 @@ STYLE_AUDIT_REPORT=1 STYLE_AUDIT_FILE=src/components/MyWidget npx vitest run src
 - **Styling Method Violations**: Flag static `style={{ ... }}` values (move them to the co-located namespaced `ComponentName.css`), elements combining `className` with static `style`, inline `sx={{ ... }}` objects (use a `Record<string, SxProps<Theme>>` dictionary), orphan or duplicated CSS classes, and token fallbacks that differ from `src/tokens/ui.ts`. Avoid `.module.css` files; the SDK pipeline does not hash class names.
 - **Token Role Mismatch**: Ensure proper tokens are used according to role (e.g. `var(--secondaryForeground, #666666)` for subtitles/captions, `var(--primaryAccentHover, #005a91)` on hover states, `var(--primaryBorder, #e0e0e0)` on card outlines).
 - **Resource Leaks in Lifecycle**: Any event subscriptions, background intervals, or MobX reactions created in `_onInitialize()` MUST be disposed in `_onDestroy()`.
-- **Complex `@serializable` Types**: Non-primitive properties (like `Date` or custom classes) in `@serializable` must have explicit `{ serializer, deserializer }` definitions.
+- **Complex Serializable Types**: Non-primitive properties (like `Date` or custom classes) must have explicit `serialize` / `deserialize` functions in their `PropertyDef` in `_getSerializableProperties()`.
 
 #### 🔵 Recommendations (Cleanliness, Maintainability & a11y)
 - **Component Decomposition & Extraction Heuristics**:

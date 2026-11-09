@@ -54,15 +54,29 @@ Create a widget whose title and refresh rate can be edited in VertiGIS Designer 
 ### 1. Model
 ```typescript
 // src/components/DashboardWidget/DashboardWidgetModel.ts
-import { ComponentModelBase, serializable } from "@vertigis/web/models";
+import {
+    ComponentModelBase,
+    serializable,
+    type ComponentModelProperties,
+    type PropertyDefs,
+} from "@vertigis/web/models";
 
+export interface DashboardWidgetModelProperties extends ComponentModelProperties {
+    refreshIntervalSeconds?: number;
+}
+
+// `@serializable` goes on the CLASS only, never on a property.
 @serializable
-export class DashboardWidgetModel extends ComponentModelBase {
-    @serializable
-    title: string = "Operational Dashboard";
+export class DashboardWidgetModel extends ComponentModelBase<DashboardWidgetModelProperties> {
+    // `title` is a base property: it already loads from config.
+    refreshIntervalSeconds = 30;
 
-    @serializable
-    refreshIntervalSeconds: number = 30;
+    protected override _getSerializableProperties(): PropertyDefs<DashboardWidgetModelProperties> {
+        return {
+            ...super._getSerializableProperties(),
+            refreshIntervalSeconds: { serializeModes: ["initial"], default: 30 },
+        };
+    }
 }
 ```
 

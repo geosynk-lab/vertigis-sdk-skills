@@ -53,7 +53,7 @@ This generates the production output in the `dist/` directory, typically includi
 - Use custom namespaces for your commands/operations (e.g. `myorg.inspection.start`) to avoid collision with core VertiGIS APIs.
 
 ### C. State Management
-- Use `@serializable` only for properties that should be persisted in `app-config.json`.
+- Register in `_getSerializableProperties()` only the properties that should be persisted in `app-config.json`. `@serializable` goes on the class only, never on a property.
 - Keep runtime transient state as regular MobX `@observable` fields.
 - Clean up event subscriptions and intervals in `_onDestroy()`.
 
@@ -83,7 +83,7 @@ This generates the production output in the `dist/` directory, typically includi
   - `tokens/`: Component-level token overrides or aliases.
   - `types/`: Type definitions, interfaces, and DTO contracts.
 - **Model vs View Separation**:
-  - **MobX Models (`*Model.ts`)**: Extend `ComponentModelBase`. Handle data persistence (`@serializable`), state (`@observable`), service injection (`@inject`), and lifecycle hooks (`_onInitialize`, `_onDestroy`). Strictly prohibited from importing React, JSX, or accessing DOM APIs.
+  - **MobX Models (`*Model.ts`)**: Extend `ComponentModelBase`. Handle data persistence (`@serializable` on the class + `_getSerializableProperties()`), state (`@observable`), service injection (`@inject`), and lifecycle hooks (`_onInitialize`, `_onDestroy`). Strictly prohibited from importing React, JSX, or accessing DOM APIs.
   - **React Views (`*.tsx`)**: High-level coordinators wrapped in `observer()`. Render layout slots (`<LayoutElement>`), provide error containment (`<ErrorBoundary>`), and compose sub-components. Delegate stateful workflows to custom hooks.
 - **Actionable Extraction Heuristics**:
   - If a JSX block exceeds 50 lines or represents an independent UI section (header, modal, table), extract it into `components/`.

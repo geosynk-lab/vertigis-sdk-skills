@@ -192,10 +192,12 @@ export interface CustomHandle {
     remove(): void;
 }
 
+// `@serializable` goes on the CLASS only. `title` is a base property
+// (ComponentModelProperties), so it loads from config with no extra code.
+// Register your own config properties in `_getSerializableProperties()`
+// (see references/02_components.md).
 @serializable
 export class CustomWidgetModel extends ComponentModelBase {
-    @serializable
-    title: string = "Default Title";
 
     @importModel("map-extension")
     map: MapModel | undefined;

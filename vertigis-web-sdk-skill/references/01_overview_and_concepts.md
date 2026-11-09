@@ -53,7 +53,7 @@ VertiGIS Studio Web applications are structured around five foundational element
 
 4. **Events & Observability**:
    - Event bus for broadcasting system lifecycle state and component notifications.
-   - State reactivity powered by MobX decorators (`@serializable`, `@subscribable`).
+   - State reactivity powered by MobX decorators (`@observable`, `@subscribable`). Config is loaded through the `@serializable` class decorator plus `_getSerializableProperties()`.
 
 5. **Layout & App Configuration**:
    - **Layout (`app.json`)**: Declares the visual hierarchy, docking slots, splits, and UI components.

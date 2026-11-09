@@ -117,7 +117,7 @@ export class LiveDataModel extends ComponentModelBase {
 
 ### CRITICAL — React Views Must Use `observer()`
 
-For React components to re-render when MobX `@observable` or `@serializable` properties change, you MUST wrap the component function with `observer()` from `mobx-react-lite`:
+For React components to re-render when MobX `@observable` properties or config-backed model properties change, you MUST wrap the component function with `observer()` from `mobx-react-lite`:
 
 ```tsx
 import { observer } from "mobx-react-lite";

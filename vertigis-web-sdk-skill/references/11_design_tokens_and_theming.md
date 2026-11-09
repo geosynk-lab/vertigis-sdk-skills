@@ -1224,7 +1224,7 @@ src/components/InspectionDashboard/
 3. **MobX Model vs React View Architectural Separation**:
    - **MobX Model (`*Model.ts`)**:
      - Extends `ComponentModelBase`.
-     - Handles `@serializable` config properties, `@observable` reactive state, `@action` mutations, and `@inject` service dependencies.
+     - Handles config properties (`@serializable` class + `_getSerializableProperties()`), `@observable` reactive state, `@action` mutations, and `@inject` service dependencies.
      - Implements `_onInitialize()` and `_onDestroy()` lifecycle methods.
      - **Strict Rule**: Models are **strictly banned** from importing React, JSX, or accessing the DOM.
    - **React View (`main.tsx`)**:
