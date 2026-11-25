@@ -124,9 +124,9 @@ export default DashboardWidget;
 /* src/components/DashboardWidget/DashboardWidget.css */
 .DashboardWidget {
     padding: var(--spacingLg, 16px);
-    border-top: 4px solid var(--primaryAccent, #007ac2);
+    border-top: 4px solid var(--primaryAccent, #1a72c4);
     border-radius: var(--borderRadius, 4px);
-    background-color: var(--secondaryBackground, #f5f5f5);
+    background-color: var(--secondaryBackground, #ebebeb);
 }
 ```
 

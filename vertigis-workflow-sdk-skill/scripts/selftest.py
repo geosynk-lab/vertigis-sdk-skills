@@ -35,11 +35,10 @@ def catalog_errors(here: Path, implemented: set) -> list[str]:
     return errors
 
 
-def fixture_target(folder: Path, name: str) -> Path | None:
-    if (folder / name).is_dir():
-        return folder / name
-    found = sorted(folder.glob(f"{name}.*"))
-    return found[0] if found else None
+def fixture_targets(folder: Path, name: str) -> list[Path]:
+    """The main fixture (`bad`, `bad.*`) first, then extra cases named `bad-<case>` (file or folder)."""
+    main = [folder / name] if (folder / name).is_dir() else sorted(folder.glob(f"{name}.*"))[:1]
+    return main + sorted(folder.glob(f"{name}-*"))
 
 
 def fixture_errors(here: Path, checks: list) -> list[str]:
@@ -57,13 +56,13 @@ def fixture_errors(here: Path, checks: list) -> list[str]:
         expected_file = folder / "expected.txt"
         expected = set(expected_file.read_text().split()) if expected_file.exists() else {rule_id}
         for name, want in (("bad", expected), ("good", set())):
-            target = fixture_target(folder, name)
-            if target is None:
+            targets = fixture_targets(folder, name)
+            if not targets:
                 errors.append(f"{rule_id}: missing {name} fixture")
-                continue
-            got = {v.rule for v in run(target, here / "rules.json", checks)["violations"]}
-            if got != want:
-                errors.append(f"{rule_id}/{target.name}: expected {sorted(want)}, got {sorted(got)}")
+            for target in targets:
+                got = {v.rule for v in run(target, here / "rules.json", checks)["violations"]}
+                if got != want:
+                    errors.append(f"{rule_id}/{target.name}: expected {sorted(want)}, got {sorted(got)}")
     return errors
 
 

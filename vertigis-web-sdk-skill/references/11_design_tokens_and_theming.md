@@ -371,19 +371,25 @@ Use one of these pairs:
 - **Selected state** (toggle button, list item, tab): `--itemSelectedBackground` with the inherited text, and `--primaryAccent` as the border or indicator.
 
 ```typescript
-// src/tokens/muiTheme.ts (createTheme styleOverrides)
-MuiToggleButton: {
-    styleOverrides: {
-        root: {
-            "&.Mui-selected": {
-                backgroundColor: UI_TOKENS.control.itemSelected,
-                color: UI_TOKENS.text.primary, // allowed in createTheme only; in CSS, let the text inherit
-                borderColor: UI_TOKENS.accent.primary,
-                "&:hover": { backgroundColor: UI_TOKENS.control.itemSelected, color: UI_TOKENS.text.primary },
+// src/tokens/muiTheme.ts
+export const createVertiGisTheme = (isDark: boolean) =>
+    createTheme({
+        palette: { mode: isDark ? "dark" : "light" },
+        components: {
+            MuiToggleButton: {
+                styleOverrides: {
+                    root: {
+                        "&.Mui-selected": {
+                            backgroundColor: UI_TOKENS.control.itemSelected,
+                            color: UI_TOKENS.text.primary, // allowed in createTheme only; in CSS, let the text inherit
+                            borderColor: UI_TOKENS.accent.primary,
+                            "&:hover": { backgroundColor: UI_TOKENS.control.itemSelected, color: UI_TOKENS.text.primary },
+                        },
+                    },
+                },
             },
         },
-    },
-},
+    });
 ```
 
 ### 3. Typography Tokens (`src/tokens/typography.ts`)
@@ -537,19 +543,19 @@ The card's layout and states live in `FeatureCard.css`; `color-mix()` tints the 
 ```css
 .FeatureCard {
     padding: var(--spacingLg, 16px);
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
     transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .FeatureCard:hover {
-    border-color: var(--primaryAccentHover, #005a91);
-    background-color: color-mix(in srgb, var(--primaryAccent, #007ac2) 5%, transparent);
+    border-color: var(--primaryAccentHover, #2c2c2c);
+    background-color: color-mix(in srgb, var(--primaryAccent, #1a72c4) 5%, transparent);
 }
 
 .FeatureCard--selected {
-    border-color: var(--primaryAccent, #007ac2);
-    background-color: color-mix(in srgb, var(--primaryAccent, #007ac2) 10%, transparent);
+    border-color: var(--primaryAccent, #1a72c4);
+    background-color: color-mix(in srgb, var(--primaryAccent, #1a72c4) 10%, transparent);
 }
 ```
 
@@ -889,7 +895,7 @@ The following formats are supported: #nnn, #nnnnnn, rgb(), rgba(), hsl(), hsla()
 For non-MUI DOM elements (`div`, `header`, `aside`, card chrome, borders, scroll containers), consume official host CSS design tokens directly in co-located namespaced CSS (`ComponentName.css`):
 ```css
 .MonitoringCard {
-    border: var(--borderWidth, 1px) solid var(--primaryBorder, #e0e0e0);
+    border: var(--borderWidth, 1px) solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
 }
 ```
@@ -957,7 +963,7 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
       align-items: center;
       justify-content: space-between;
       padding: var(--spacingMd, 12px) var(--spacingLg, 16px);
-      border-bottom: 1px solid var(--primaryBorder, #e0e0e0);
+      border-bottom: 1px solid var(--primaryBorder, #c6c6c6);
   }
 
   .ListHeader-title {
@@ -972,8 +978,8 @@ The VertiGIS Web SDK Webpack pipeline compiles CSS using `style-loader` and `css
       padding: var(--spacingXxs, 2px) var(--spacingSm, 8px);
       font-size: 0.75rem;
       border-radius: var(--borderRadius, 4px);
-      background-color: var(--secondaryBackground, #f5f5f5);
-      color: var(--secondaryForeground, #666666);
+      background-color: var(--secondaryBackground, #ebebeb);
+      color: var(--secondaryForeground, #575757);
   }
   ```
 
@@ -1022,13 +1028,13 @@ Consume the official VertiGIS host CSS variables directly in component rules, al
 ```css
 /* ✅ CLEAN ARCHITECTURE: Direct token consumption in namespaced CSS */
 .MonitoringCard {
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
 }
 
 .MonitoringCard-secondary {
-    background: var(--secondaryBackground, #f5f5f5);
-    color: var(--secondaryForeground, #666666);
+    background: var(--secondaryBackground, #ebebeb);
+    color: var(--secondaryForeground, #575757);
 }
 ```
 

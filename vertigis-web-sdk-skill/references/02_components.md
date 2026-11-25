@@ -247,16 +247,16 @@ Global layout lives in `src/styles/app.css` (component-level CSS files in `src/c
 }
 
 .app-layout--bordered {
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
 }
 
 .app-layout-surface {
     margin-bottom: var(--spacingLg, 16px);
     padding: var(--spacingMd, 12px);
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
-    background-color: var(--secondaryBackground, #f5f5f5);
+    background-color: var(--secondaryBackground, #ebebeb);
 }
 
 .app-layout-row {

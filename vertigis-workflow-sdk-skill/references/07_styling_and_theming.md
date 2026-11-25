@@ -662,41 +662,10 @@ import { TYPOGRAPHY_TOKENS } from "./typography";
  */
 export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
     return createTheme({
-        palette: {
-            mode: isDark ? "dark" : "light",
-            primary: {
-                main: UI_TOKENS.accent.primary,
-                contrastText: UI_TOKENS.accent.contrastText,
-            },
-            background: {
-                default: UI_TOKENS.surface.primary,
-                paper: UI_TOKENS.surface.secondary,
-            },
-            text: {
-                primary: UI_TOKENS.text.primary,
-                secondary: UI_TOKENS.text.secondary,
-                disabled: UI_TOKENS.text.disabled,
-            },
-            divider: UI_TOKENS.border.primary,
-            error: {
-                main: UI_TOKENS.status.errorFg,
-            },
-            success: {
-                main: UI_TOKENS.status.successFg,
-            },
-            warning: {
-                main: UI_TOKENS.status.warningFg,
-            },
-            info: {
-                main: UI_TOKENS.status.infoFg,
-            },
-            action: {
-                hover: UI_TOKENS.control.itemHover,
-                selected: UI_TOKENS.control.itemSelected,
-                disabledBackground: UI_TOKENS.control.buttonBackgroundDisabled,
-                disabled: UI_TOKENS.text.disabled,
-            },
-        },
+        // Palette stays mode-only: every UI_TOKENS.* value is a var(--...) string, and MUI runs
+        // augmentColor()/alpha() on palette colours, which throws on var(). Host colours go
+        // through the components.*.styleOverrides below.
+        palette: { mode: isDark ? "dark" : "light" },
         typography: {
             fontFamily: "inherit",
             fontSize: 14, // Minimum 14px for outdoor field readability

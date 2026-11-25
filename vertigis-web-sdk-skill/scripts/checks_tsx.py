@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 
 import verify_zero_cosmetic_sx as zero_cosmetic
+from checks_tokens import TOKEN_REF
 from engine import (TOKEN_VAR, COLOR_LITERAL, Context, color_literal, in_tokens_dir, matching_close,
                     normalize_hex, split_top_level, string_literals)
 
@@ -25,6 +26,9 @@ STATIC_VALUE = re.compile(r"^([\"'][^\"'$]*[\"']|`[^`$]*`|-?\d+(\.\d+)?|true|fal
 TAG_START = re.compile(r"<([A-Za-z][\w.]*)")
 CLOSE_TAG = re.compile(r"</([A-Za-z][\w.]*)\s*>")
 FLEX_DISPLAY = {"flex", "inline-flex", "grid", "inline-grid"}
+# Any scalar palette entry: main/light/dark/contrastText, background.default/paper, text.primary/secondary/disabled,
+# divider, action.*, common.*. MUI runs augmentColor()/alpha() on these, so a CSS variable crashes it.
+PALETTE_ENTRY = re.compile(r"(?<![\w-])[\"']?(\w+)[\"']?\s*:\s*([^,{}\n]+)")
 
 
 @dataclass
@@ -232,8 +236,9 @@ def check_properties(ctx: Context, src) -> None:
             if any(COLOR_LITERAL.search(text) for _, text in string_literals(block)):
                 ctx.add("THEME_HARDCODED_PALETTE", src, index, "palette contains hardcoded colours")
     for index, block in block_after(code, r"\bpalette\s*:\s*\{"):
-        for m in re.finditer(r"\b(main|light|dark|contrastText)\s*:\s*[^,}\n]*var\(", block):
-            ctx.add("PALETTE_CSS_VAR", src, index, m.group(0).strip())
+        for m in PALETTE_ENTRY.finditer(block):
+            if "var(" in m.group(2) or TOKEN_REF.search(m.group(2)):
+                ctx.add("PALETTE_CSS_VAR", src, index, m.group(0).strip())
     for index, block in block_after(code, r"\bMuiTypography\s*:\s*\{"):
         if re.search(r"(?<![\w-])color\s*:", block):
             ctx.add("THEME_HARDCODED_PALETTE", src, index, "MuiTypography color override blocks color= props")

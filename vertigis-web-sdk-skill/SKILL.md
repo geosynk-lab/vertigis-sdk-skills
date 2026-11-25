@@ -273,7 +273,7 @@ export default CustomWidget;
 ```css
 .CustomWidget {
     padding: var(--spacingLg, 16px);
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
 }
 
@@ -286,14 +286,14 @@ export default CustomWidget;
 .CustomWidget-subtitle {
     margin: 0 0 var(--spacingLg, 16px) 0;
     font-size: 0.875rem;
-    color: var(--secondaryForeground, #666666);
+    color: var(--secondaryForeground, #575757);
 }
 
 .CustomWidget-card {
     padding: var(--spacingMd, 12px);
     margin-bottom: var(--spacingLg, 16px);
-    background-color: var(--secondaryBackground, #f5f5f5);
-    border: 1px solid var(--primaryBorder, #e0e0e0);
+    background-color: var(--secondaryBackground, #ebebeb);
+    border: 1px solid var(--primaryBorder, #c6c6c6);
     border-radius: var(--borderRadius, 4px);
 }
 
@@ -304,14 +304,14 @@ export default CustomWidget;
 
 .CustomWidget-caption {
     margin: 0;
-    color: var(--secondaryForeground, #666666);
+    color: var(--secondaryForeground, #575757);
     font-size: 0.75rem;
 }
 
 .CustomWidget-meta {
     display: block;
     font-size: 0.75rem;
-    color: var(--secondaryForeground, #666666);
+    color: var(--secondaryForeground, #575757);
 }
 ```
 
