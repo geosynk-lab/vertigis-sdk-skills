@@ -824,7 +824,7 @@ export default VertiGisThemeProvider;
 ```
 
 ##### Declarative State via Data Attributes
-Components describe state, the theme decides how it looks. Put the value on the element as a data attribute; the matching `&[data-status="..."]` selector lives in `muiTheme.ts` (see `MuiCard` above):
+Components describe state, the theme decides how it looks. Put the value on the element as a data attribute; for an MUI component the matching scoped `&.StatusCard-root[data-status="..."]` selector lives in `muiTheme.ts` (see `MuiCard` above); for non-MUI chrome it lives in the co-located `ComponentName.css`:
 
 ```tsx fragment
 <Card data-status={record.status}>
@@ -1580,7 +1580,7 @@ Before submitting a VertiGIS component or extension for code review, verify adhe
 | | Host Theme & Namespaced CSS | Components inherit host theme natively via tokens; all CSS classes (optional files) are strictly namespaced (e.g. `.ListHeader`). |
 | **Styling** | Zero cosmetic `sx` | `sx` / `style` / style dictionaries hold layout, geometry and spacing only; cosmetics live in `src/tokens/muiTheme.ts` (`NO_COSMETIC_SX`). |
 | | 8px grid | Spacing values are `0, 0.5, 1, 1.5, 2, 2.5, 3, 4`; siblings are spaced by parent `gap` / `Stack spacing` (`STANDARDIZED_SPACING`). |
-| | Declarative state & containment | State is a data attribute (`data-status`) styled in the theme; `<canvas>`, `<img>`, `<iframe>` sit inside `Paper` / `Card` (`NON_MUI_CONTAINMENT`). `npm run verify:styles` exits 0. |
+| | Declarative state & containment | State is a data attribute (`data-status`) styled on a namespaced class (theme for MUI components, co-located CSS for non-MUI chrome); `<canvas>`, `<img>`, `<iframe>` sit inside `Paper` / `Card` (`NON_MUI_CONTAINMENT`). `npm run verify:styles` exits 0. |
 | | UI Library Safety | Never import UI controls from `@vertigis/web/ui` (causes fatal UIContext crash outside shell). |
 | **Modularity & Architecture** | File size compliance | Every file is under 150 lines (target) and strictly below 250 lines (ceiling). |
 | | Directory blueprint | Complex components use `components/`, `hooks/`, `utils/`, and `types/` sub-directories. |

@@ -239,7 +239,7 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 export default MyWidget;
 ```
 
-Global layout lives in `src/styles/app.css` (component-level CSS files in `src/components/` are prohibited):
+Non-MUI layout chrome lives in a CSS file: a co-located, namespaced `MyWidget.css` next to `MyWidget.tsx`, or a shared `src/styles/app.css`:
 
 ```css
 .app-layout {
