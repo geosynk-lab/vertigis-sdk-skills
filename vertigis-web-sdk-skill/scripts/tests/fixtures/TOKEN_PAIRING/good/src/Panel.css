@@ -1,8 +1,14 @@
 .Panel-badge {
-    background-color: var(--primaryAccent, #1a72c4);
+    background-color: var(--emphasizedButtonBackground, #1a72c4);
     color: var(--emphasizedButtonForeground, #ffffff);
 }
 
 .Panel-badge-count {
     color: var(--emphasizedButtonForeground, #ffffff);
+}
+
+/* Selected state: selected surface, inherited text, accent only as the border. */
+.Panel-toggle--selected {
+    background-color: var(--itemSelectedBackground, #e3eff9);
+    border-color: var(--primaryAccent, #1a72c4);
 }

@@ -158,7 +158,7 @@ export const UI_TOKENS = {
         large: "var(--primaryAccentLarge, #1a72c4)",
         /** Subtle background tint for selected rows or badge highlights */
         light: "var(--primaryAccentLight, #e3eff9)",
-        /** Contrasting text color rendered on top of accent fills */
+        /** Text on --emphasizedButtonBackground only; never on accent.primary (brand themes can match them) */
         contrastText: "var(--emphasizedButtonForeground, #ffffff)",
     },
 

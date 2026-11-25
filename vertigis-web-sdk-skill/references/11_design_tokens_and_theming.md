@@ -169,7 +169,7 @@ export const UI_TOKENS = {
         large: "var(--primaryAccentLarge, #1a72c4)",
         /** Subtle background tint for selected rows or badge highlights */
         light: "var(--primaryAccentLight, #e3eff9)",
-        /** Contrasting text color rendered on top of accent fills */
+        /** Text on --emphasizedButtonBackground only; never on accent.primary (brand themes can match them) */
         contrastText: "var(--emphasizedButtonForeground, #ffffff)",
     },
 
@@ -352,6 +352,39 @@ export type UiTokens = typeof UI_TOKENS;
 ```
 
 ---
+
+#### Pitfall: Text on an Accent Fill (`--primaryAccent`)
+
+`--primaryAccent` is a brand colour for borders, icons, indicators and text on panel surfaces. The host has **no** foreground token that is paired with it. A custom brand theme can set, for example:
+
+| Host token | Brand theme value |
+| :--- | :--- |
+| `--primaryAccent` | black |
+| `--emphasizedButtonBackground` | yellow |
+| `--emphasizedButtonForeground` | black |
+
+With these values, `--primaryAccent` as a background with `--emphasizedButtonForeground` (or `UI_TOKENS.accent.contrastText`) as the text gives **black on black**. `TOKEN_CONTRAST` cannot find this, because it computes contrast from the default fallbacks (blue and white). `TOKEN_PAIRING` reports any text on a `--primaryAccent*` fill.
+
+Use one of these pairs:
+
+- **Emphasized fill** (badge, primary action): `--emphasizedButtonBackground` with `--emphasizedButtonForeground`.
+- **Selected state** (toggle button, list item, tab): `--itemSelectedBackground` with the inherited text, and `--primaryAccent` as the border or indicator.
+
+```typescript
+// src/tokens/muiTheme.ts (createTheme styleOverrides)
+MuiToggleButton: {
+    styleOverrides: {
+        root: {
+            "&.Mui-selected": {
+                backgroundColor: UI_TOKENS.control.itemSelected,
+                color: UI_TOKENS.text.primary, // allowed in createTheme only; in CSS, let the text inherit
+                borderColor: UI_TOKENS.accent.primary,
+                "&:hover": { backgroundColor: UI_TOKENS.control.itemSelected, color: UI_TOKENS.text.primary },
+            },
+        },
+    },
+},
+```
 
 ### 3. Typography Tokens (`src/tokens/typography.ts`)
 

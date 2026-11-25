@@ -1,3 +1,9 @@
 .Panel-badge {
     background-color: var(--primaryAccent, #1a72c4);
 }
+
+/* Black on black in brand themes where --primaryAccent and --emphasizedButtonForeground are both black. */
+.Panel-toggle--selected {
+    background-color: var(--primaryAccent, #1a72c4);
+    color: var(--emphasizedButtonForeground, #ffffff);
+}

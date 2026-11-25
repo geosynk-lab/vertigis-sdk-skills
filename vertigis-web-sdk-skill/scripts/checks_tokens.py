@@ -21,7 +21,12 @@ SURFACE_TEXT = {
     "tabSecondaryForeground", "accentIconForeground", "buttonForeground",
 }
 ON_STRONG = {"emphasizedButtonForeground", "primaryBackground"}
+# The host has no foreground token that is paired with an accent fill. In brand themes --primaryAccent can
+# have the same colour as --emphasizedButtonForeground or --primaryBackground (e.g. black on black), so no
+# text token is safe on these backgrounds.
 STRONG_BACKGROUNDS = {"primaryAccent", "primaryAccentLarge", "primaryAccentHover"}
+ACCENT_FILL_FIX = ("use emphasizedButtonBackground with emphasizedButtonForeground, or for a selected state "
+                   "itemSelectedBackground with the inherited text and a primaryAccent border")
 MIN_TEXT_CONTRAST = 4.5
 
 TEXT_KEYS = {"color"}
@@ -91,6 +96,8 @@ def pairing_problem(fg: str, bg: str) -> str | None:
         return None if bg == INHERITED_TEXT and fg == INHERITED_SURFACE else f"foreground token {bg} used as a background"
     if not is_strong(bg):
         return None
+    if bg in STRONG_BACKGROUNDS:
+        return f"{fg} on accent fill {bg}: no host foreground is paired with {bg}; {ACCENT_FILL_FIX}"
     partner = bg.replace("Background", "Foreground")
     allowed = ({partner} if partner != bg else set()) | ON_STRONG
     return None if fg in allowed else f"{fg} on {bg}; use {' or '.join(sorted(allowed))}"
@@ -109,6 +116,8 @@ def analyse(ctx: Context, src, index: int, decls: dict, parent_bg, layered: bool
     if bg and not fg:
         if "Foreground" in bg[0]:
             ctx.add("TOKEN_PAIRING", src, index, f"foreground token {bg[0]} used as a background")
+        elif bg[0] in STRONG_BACKGROUNDS:
+            ctx.add("TOKEN_PAIRING", src, index, f"accent fill {bg[0]} used as a background; {ACCENT_FILL_FIX}")
         elif is_strong(bg[0]):
             ctx.add("TOKEN_PAIRING", src, index, f"background {bg[0]} set without its matching foreground")
         return
