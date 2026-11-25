@@ -662,40 +662,11 @@ import { TYPOGRAPHY_TOKENS } from "./typography";
  */
 export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
     return createTheme({
+        // Keep the palette free of var(...): MUI runs augmentColor() and alpha() on palette colours, and
+        // these crash on CSS variables ("MUI: Unsupported var(...) color"). Attach every token through
+        // components.<Mui*>.styleOverrides below.
         palette: {
             mode: isDark ? "dark" : "light",
-            primary: {
-                main: UI_TOKENS.accent.primary,
-                contrastText: UI_TOKENS.accent.contrastText,
-            },
-            background: {
-                default: UI_TOKENS.surface.primary,
-                paper: UI_TOKENS.surface.secondary,
-            },
-            text: {
-                primary: UI_TOKENS.text.primary,
-                secondary: UI_TOKENS.text.secondary,
-                disabled: UI_TOKENS.text.disabled,
-            },
-            divider: UI_TOKENS.border.primary,
-            error: {
-                main: UI_TOKENS.status.errorFg,
-            },
-            success: {
-                main: UI_TOKENS.status.successFg,
-            },
-            warning: {
-                main: UI_TOKENS.status.warningFg,
-            },
-            info: {
-                main: UI_TOKENS.status.infoFg,
-            },
-            action: {
-                hover: UI_TOKENS.control.itemHover,
-                selected: UI_TOKENS.control.itemSelected,
-                disabledBackground: UI_TOKENS.control.buttonBackgroundDisabled,
-                disabled: UI_TOKENS.text.disabled,
-            },
         },
         typography: {
             fontFamily: "inherit",
@@ -710,6 +681,19 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                     root: {
                         // CRITICAL: Disable MUI default dark elevation overlay tint
                         backgroundImage: "none",
+                        // Portalled surfaces (Dialog, Menu, Popover) do not inherit the host panel
+                        backgroundColor: UI_TOKENS.surface.secondary,
+                        color: UI_TOKENS.text.primary,
+                    },
+                    outlined: {
+                        borderColor: UI_TOKENS.border.primary,
+                    },
+                },
+            },
+            MuiDivider: {
+                styleOverrides: {
+                    root: {
+                        borderColor: UI_TOKENS.border.primary,
                     },
                 },
             },
@@ -719,6 +703,43 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                         textTransform: "none",
                         fontWeight: 600,
                         minHeight: UI_TOKENS.touch.minHeight, // Mobile 44x44px touch target
+                    },
+                    // Filled buttons: use the emphasized button pair. Never put text on accent.primary,
+                    // because brand themes can give --primaryAccent and the foreground the same colour.
+                    containedPrimary: {
+                        backgroundColor: UI_TOKENS.control.emphasizedButtonBackground,
+                        color: UI_TOKENS.control.emphasizedButtonForeground,
+                        "&:hover": {
+                            backgroundColor: UI_TOKENS.control.emphasizedButtonBackgroundHover,
+                            color: UI_TOKENS.control.emphasizedButtonForegroundHover,
+                        },
+                        "&.Mui-disabled": {
+                            backgroundColor: UI_TOKENS.control.emphasizedButtonBackgroundDisabled,
+                            color: UI_TOKENS.control.emphasizedButtonForegroundDisabled,
+                        },
+                    },
+                    // Outlined and text buttons: accent as text on the inherited surface
+                    outlinedPrimary: {
+                        color: UI_TOKENS.accent.primary,
+                        borderColor: UI_TOKENS.accent.primary,
+                    },
+                    textPrimary: {
+                        color: UI_TOKENS.accent.primary,
+                    },
+                },
+            },
+            MuiLink: {
+                styleOverrides: {
+                    root: {
+                        color: UI_TOKENS.accent.primary,
+                    },
+                },
+            },
+            MuiSlider: {
+                styleOverrides: {
+                    root: {
+                        // Track, rail, and thumb use currentColor
+                        color: UI_TOKENS.accent.primary,
                     },
                 },
             },
@@ -735,6 +756,9 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                         "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                             borderColor: UI_TOKENS.accent.primary,
                         },
+                        "&.Mui-error .MuiOutlinedInput-notchedOutline": {
+                            borderColor: UI_TOKENS.status.errorHelperTextFg,
+                        },
                         "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
                             borderColor: UI_TOKENS.control.inputBorderDisabled,
                         },
@@ -747,6 +771,22 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                         color: UI_TOKENS.text.secondary,
                         "&.Mui-focused": {
                             color: UI_TOKENS.accent.primary,
+                        },
+                        "&.Mui-error": {
+                            color: UI_TOKENS.status.errorHelperTextFg,
+                        },
+                        "&.Mui-disabled": {
+                            color: UI_TOKENS.text.disabled,
+                        },
+                    },
+                },
+            },
+            MuiFormHelperText: {
+                styleOverrides: {
+                    root: {
+                        color: UI_TOKENS.text.secondary,
+                        "&.Mui-error": {
+                            color: UI_TOKENS.status.errorHelperTextFg,
                         },
                     },
                 },
@@ -768,6 +808,60 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                         "&.Mui-checked": {
                             color: UI_TOKENS.accent.primary,
                         },
+                    },
+                },
+            },
+            MuiMenuItem: {
+                styleOverrides: {
+                    root: {
+                        "&:hover": {
+                            backgroundColor: UI_TOKENS.control.itemHover,
+                        },
+                        "&.Mui-selected": {
+                            backgroundColor: UI_TOKENS.control.itemSelected,
+                        },
+                        "&.Mui-selected:hover": {
+                            backgroundColor: UI_TOKENS.control.itemHover,
+                        },
+                    },
+                },
+            },
+            MuiListItemButton: {
+                styleOverrides: {
+                    root: {
+                        "&:hover": {
+                            backgroundColor: UI_TOKENS.control.itemHover,
+                        },
+                        "&.Mui-selected": {
+                            backgroundColor: UI_TOKENS.control.itemSelected,
+                        },
+                        "&.Mui-selected:hover": {
+                            backgroundColor: UI_TOKENS.control.itemHover,
+                        },
+                    },
+                },
+            },
+            MuiAlert: {
+                styleOverrides: {
+                    standardError: {
+                        backgroundColor: UI_TOKENS.status.errorBg,
+                        color: UI_TOKENS.status.errorFg,
+                        "& .MuiAlert-icon": { color: "inherit" },
+                    },
+                    standardWarning: {
+                        backgroundColor: UI_TOKENS.status.warningBg,
+                        color: UI_TOKENS.status.warningFg,
+                        "& .MuiAlert-icon": { color: "inherit" },
+                    },
+                    standardSuccess: {
+                        backgroundColor: UI_TOKENS.status.successBg,
+                        color: UI_TOKENS.status.successFg,
+                        "& .MuiAlert-icon": { color: "inherit" },
+                    },
+                    standardInfo: {
+                        backgroundColor: UI_TOKENS.status.infoBg,
+                        color: UI_TOKENS.status.infoFg,
+                        "& .MuiAlert-icon": { color: "inherit" },
                     },
                 },
             },
