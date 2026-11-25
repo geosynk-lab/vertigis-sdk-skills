@@ -191,6 +191,57 @@ export default function (registry: LibraryRegistry): void {
 }
 ```
 
+### Intercepting a Host Command (Built-in Command Hooks)
+
+Use this pattern when your component must react to a built-in command (for example `layer-comparison.set-mode`) and the host must still run its own handler. Your handler runs first, and `context.next(args)` calls the host handler.
+
+```typescript
+import { ComponentModelBase, serializable } from "@vertigis/web/models";
+import { command } from "@vertigis/web/messaging";
+
+type SetModeArgs = { active?: boolean } | boolean | undefined;
+type ChainContext = { next?: (args?: unknown) => Promise<unknown> };
+
+@serializable
+export class BasemapPickerModel extends ComponentModelBase {
+    compareEnabled = false;
+
+    // targetInactive: true -> the handler also runs when the component is inactive
+    // (inside a collapsed <expand>, a closed panel or an inactive tab).
+    @command("layer-comparison.set-mode", { targetInactive: true })
+    protected async _onLayerComparisonSetMode(args: SetModeArgs, context?: ChainContext): Promise<void> {
+        // 1. Forward the SAME args to the host handler. Never call context.next() without args.
+        await context?.next?.(args);
+        // 2. Then update this component. Accept both payload shapes: true/false and { active }.
+        const active = typeof args === "boolean" ? args : args?.active;
+        this.compareEnabled = typeof active === "boolean" ? active : !this.compareEnabled;
+    }
+
+    // To change the host state from your own code, execute the command. Do not change the host directly.
+    async exitCompareMode(): Promise<void> {
+        if (this.messages?.hasCommand("layer-comparison.set-mode")) {
+            await this.messages.commands.layerComparison.setMode.execute({ active: false });
+        }
+    }
+}
+```
+
+In `src/index.ts`, the basemap library also declares the host command for the item type of its model:
+
+```typescript
+registry.registerCommand({
+    name: "layer-comparison.set-mode",
+    itemType: "etsa-basemap-picker-model",
+});
+```
+
+| Pitfall | What happens | Fix |
+| :--- | :--- | :--- |
+| No `{ targetInactive: true }` on `@command(...)` | The handler does not run while the component is inactive, for example inside a collapsed `<expand>` or a closed panel. The host command runs, but your component does not change. | Always pass `{ targetInactive: true }` for a component that can be inactive. |
+| `await context.next()` without `args` | The host handler gets `undefined` in place of its arguments. With `layer-comparison.set-mode`, VertiGIS crashes (seen in the basemap library, Issue #3). | Always forward the same object: `await context?.next?.(args)`. |
+| Own state changed before `next(args)` | Your state and the host state can be different if the host handler fails. | Call `await context?.next?.(args)` first, then update your state. |
+| Only one payload shape accepted | Host commands can be called with `true` / `false` or with `{ active }`. | Accept both shapes, as in the example. |
+
 ---
 
 ## 5. Declarative Pipelines & Command Chaining in `app-config.json`

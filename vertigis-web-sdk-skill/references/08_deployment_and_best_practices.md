@@ -196,10 +196,15 @@ When deploying a custom extension library to production environments (such as on
   ```
 
 #### 3. Post-Build Production Sanity Audit
-Always verify before packaging that zero development hostnames or redirect callbacks leaked into `build/main.js`:
+Always verify before packaging that zero development hostnames or redirect callbacks leaked into `build/main.js`. Check **both** markers: `localtest.me` (the dev host) and `oauth_callback` (the dev popup callback page). The dev OAuth code is removed only when `NODE_ENV` is `production`. The `vertigis-web-sdk build` command sets it before it loads the webpack config, so `NODE_ENV=production npm run build` is not necessary (but does no harm).
 ```bash
-grep -F "localtest.me" build/main.js && echo "ERROR: dev URL leaked!" || echo "AUDIT PASSED"
+if grep -Fq "localtest.me" build/main.js || grep -Fq "oauth_callback" build/main.js; then
+    echo "ERROR: dev OAuth URL leaked into build/main.js!" >&2
+    exit 1
+fi
+echo "AUDIT PASSED"
 ```
+If your library uses its own OAuth callback page in production, rename that page or change the check. The validator rule `UNGUARDED_DEV_AUTH` reports an `initPortalAuth()` call without the `NODE_ENV !== "production"` guard, and an `initPortalAuth()` function without the early `return`.
 
 #### 4. Deterministic Multi-Stage Docker Builds
 Use `Dockerfile.build` in CI/CD pipelines to ensure clean, isolated builds without local environment drift:
@@ -213,7 +218,7 @@ RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else npm ci; 
 COPY . .
 ENV NODE_ENV=production
 RUN npm run build
-RUN if grep -Fq "localtest.me" build/main.js; then exit 1; fi
+RUN if grep -Fq "localtest.me" build/main.js || grep -Fq "oauth_callback" build/main.js; then exit 1; fi
 
 FROM scratch AS exporter
 COPY --from=builder /app/build/ /

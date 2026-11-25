@@ -10,7 +10,7 @@ RULE_IDS = {
     "HANDLES_FIELD_DECLARED", "LIFECYCLE_SUPER_ORDER", "MODEL_VIEW_SEPARATION", "OBSERVER_WRAPPING",
     "LAYOUT_ELEMENT_WRAPPER", "ACTIVE_PROP_HIDING", "ERROR_BOUNDARY", "DESIGNER_EMPTY_ATTRIBUTE",
     "FILE_LENGTH_TARGET", "FILE_LENGTH_CEILING", "FORM_PROPS_WIRING", "ACTIVITY_HANDLER_PATTERN",
-    "BARREL_EXPORT_NAMING", "JSX_IN_TS",
+    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "UNGUARDED_DEV_AUTH",
 }
 
 MODEL_BASE = re.compile(r"\bclass\s+\w+[^{]*\bextends\s+(ComponentModelBase|ModelBase)\b")
@@ -23,6 +23,15 @@ VISIBLE_GUARD = re.compile(r"if\s*\(\s*!\s*(?:props\.)?visible\s*\)\s*\{?\s*retu
                            r"!\s*(?:props\.)?visible\s*\?\s*null")
 JSX_SYNTAX = re.compile(r"</[A-Za-z][\w.]*\s*>|<[A-Za-z][\w.]*(?:\s[^<>]*)?/>|</>|"
                         r"(?:return|=>)\s*\(?\s*<[A-Za-z][\w.]*[\s>]")
+_NOT_PROD = (r"(?:process\.env\.NODE_ENV\s*!==?\s*[\"']production[\"']|"
+             r"[\"']production[\"']\s*!==?\s*process\.env\.NODE_ENV)")
+_IS_PROD = (r"(?:process\.env\.NODE_ENV\s*===?\s*[\"']production[\"']|"
+            r"[\"']production[\"']\s*===?\s*process\.env\.NODE_ENV)")
+DEV_GUARD_IF = re.compile(rf"\bif\s*\(\s*{_NOT_PROD}\s*\)\s*$")
+PROD_EARLY_RETURN = re.compile(rf"\s*if\s*\(\s*{_IS_PROD}\s*\)\s*\{{?\s*return\b")
+DEV_AUTH_CALL = re.compile(r"(?<![\w.$])initPortalAuth\s*\(")
+DEV_AUTH_DEF = re.compile(r"\bfunction\s+initPortalAuth\s*\([^)]*\)[^{]*\{|"
+                          r"\binitPortalAuth\s*=\s*(?:async\s*)?\([^)]*\)[^=>{]*=>\s*\{")
 
 
 def template_end(code: str, i: int) -> int:
@@ -143,6 +152,44 @@ def check_activity(ctx: Context, src) -> None:
             ctx.add("ACTIVITY_HANDLER_PATTERN", src, m.start(), f"input union declared as type alias {m.group(1)}")
 
 
+def open_brace_before(code: str, index: int) -> int:
+    """Index of the "{" that encloses code[index], or -1."""
+    depth = 0
+    for i in range(index - 1, -1, -1):
+        if code[i] == "}":
+            depth += 1
+        elif code[i] == "{":
+            if depth == 0:
+                return i
+            depth -= 1
+    return -1
+
+
+def dev_guarded(code: str, index: int) -> bool:
+    """True when code[index] is inside (or is the single statement of) if (NODE_ENV !== "production")."""
+    if DEV_GUARD_IF.search(code[max(0, index - 200):index]):
+        return True
+    while (index := open_brace_before(code, index)) >= 0:
+        if DEV_GUARD_IF.search(code[max(0, index - 200):index]):
+            return True
+    return False
+
+
+def check_dev_auth(ctx: Context, src) -> None:
+    """Dev OAuth (initPortalAuth) must never run in a production bundle (Web R10 / Deployment)."""
+    code = src.code
+    for m in DEV_AUTH_CALL.finditer(code):
+        if re.search(r"\bfunction\s+$", code[max(0, m.start() - 20):m.start()]):
+            continue
+        if not dev_guarded(code, m.start()):
+            ctx.add("UNGUARDED_DEV_AUTH", src, m.start(),
+                    'initPortalAuth() is called without an if (process.env.NODE_ENV !== "production") guard')
+    for m in DEV_AUTH_DEF.finditer(code):
+        if not PROD_EARLY_RETURN.match(code, m.end()):
+            ctx.add("UNGUARDED_DEV_AUTH", src, m.start(),
+                    'initPortalAuth() does not start with if (process.env.NODE_ENV === "production") return;')
+
+
 def check_barrel(ctx: Context, src) -> None:
     for m in re.finditer(r"export\s*\{\s*default\s+as\s+(\w+)\s*\}", src.code):
         if not m.group(1).endswith(("Activity", "Registration")):
@@ -165,6 +212,7 @@ def check_arch(ctx: Context) -> None:
         if ctx.sdk == "web":
             check_model(ctx, src)
             check_web_view(ctx, src)
+            check_dev_auth(ctx, src)
         else:
             if re.search(r"(^|/)activities/", src.rel):
                 check_activity(ctx, src)
