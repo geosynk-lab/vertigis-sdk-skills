@@ -2,7 +2,8 @@
 
 Blocks must produce no critical or major findings. Blocks that deliberately show a wrong
 pattern are tagged ```tsx bad (or ts/css) and must produce at least one. Partial snippets
-tagged ```tsx fragment skip the checks that need a whole file (WHOLE_FILE_RULES).
+tagged ```tsx fragment skip the checks that need a whole file (WHOLE_FILE_RULES). All blocks skip the
+checks that compare several files of a project (PROJECT_RULES).
 When the two lines above a block name a file in backticks (e.g. `src/tokens/ui.ts`),
 the block is validated at that path. Identical copy in both VertiGIS SDK skills.
 """
@@ -19,6 +20,8 @@ LANG = {"typescript": "ts", "jsx": "tsx"}
 PATH_HINT = re.compile(r"`((?:[\w.<>-]+/)*[\w.<>-]+\.(?:tsx?|css))`")
 WHOLE_FILE_RULES = {"ERROR_BOUNDARY", "FORM_PROPS_WIRING", "OBSERVER_WRAPPING", "LAYOUT_ELEMENT_WRAPPER",
                     "MODEL_VIEW_SEPARATION"}
+# A block is one file, so rules that compare several files of a project never apply to it.
+PROJECT_RULES = {"COMPONENT_CSS_PAIR"}
 
 
 def example_path(text: str, start: int, lang: str) -> str:
@@ -42,7 +45,7 @@ def example_errors(skill_dir: Path, checks: list) -> list[str]:
             lang = LANG.get(m.group(2), m.group(2))
             tags = m.group(3).split()
             expect_bad = "bad" in tags
-            skipped = WHOLE_FILE_RULES if "fragment" in tags else set()
+            skipped = (WHOLE_FILE_RULES if "fragment" in tags else set()) | PROJECT_RULES
             with tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / example_path(text, m.start(), lang)
                 path.parent.mkdir(parents=True, exist_ok=True)

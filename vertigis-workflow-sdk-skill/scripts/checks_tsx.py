@@ -13,7 +13,7 @@ RULE_IDS = {
     "DIALOG_GLOBAL_OVERRIDE", "HARDCODED_COLOR", "INLINE_TOKEN_LITERAL", "TOKEN_FALLBACK_DRIFT",
     "FONT_FAMILY", "HARDCODED_RADIUS", "PALETTE_CSS_VAR", "THEME_HARDCODED_PALETTE", "THEME_DYNAMIC_HOOK",
     "DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "ARCGIS_IMPORT_STYLE", "REDUNDANT_DECLARATION",
-    "DISABLED_TOOLTIP_WRAPPER", "UNSCOPED_THEME_OVERRIDE",
+    "DISABLED_TOOLTIP_WRAPPER", "UNSCOPED_THEME_OVERRIDE", "INLINE_STATIC_STYLE", "COMPONENT_CSS_PAIR",
 } | set(zero_cosmetic.RULES)
 
 RAW_TEXT_TAGS = {"p", "span", "label", "h1", "h2", "h3", "h4", "h5", "h6"}
@@ -129,6 +129,36 @@ def style_declarations(code: str, tag: Tag) -> dict:
 def plain(value: str) -> str:
     value = value.strip().strip("\"'`")
     return value[:-2] if re.fullmatch(r"-?[\d.]+px", value) else value
+
+
+# Tags whose fixed inline style is required by the skill: the dialog stretch on <LayoutElement> and the
+# functional dimensions (style={{ width: "100%" }}) of contained media.
+STATIC_STYLE_ALLOWED = {"LayoutElement", "canvas", "img", "iframe"}
+JSX_RETURN = re.compile(r"(?:return|=>)\s*\(?\s*<[A-Za-z>]")
+
+
+def check_inline_styles(ctx: Context, src, tag: Tag) -> None:
+    """INLINE_STATIC_STYLE: style={{ }} that holds only fixed values (they belong in the component CSS file)."""
+    if in_tokens_dir(src.rel):
+        return
+    style_obj = inline_object(tag, "style")
+    if style_obj is None or tag.has("className") or tag.name in STATIC_STYLE_ALLOWED:
+        return
+    parts = [p for p in split_top_level(style_obj) if ":" in p]
+    if parts and all(STATIC_VALUE.match(p.split(":", 1)[1].strip()) for p in parts):
+        ctx.add("INLINE_STATIC_STYLE", src, tag.start, f"<{tag.name}> style holds only fixed values")
+
+
+def check_css_pairs(ctx: Context) -> None:
+    """COMPONENT_CSS_PAIR: every .tsx view that returns JSX has a co-located .css file with the same name."""
+    if ctx.single_file:
+        return
+    css = {f.rel for f in ctx.files if f.kind == "css"}
+    for src in ctx.files:
+        if src.kind != "tsx" or src.is_test or in_tokens_dir(src.rel) or src.rel.endswith(".stories.tsx"):
+            continue
+        if JSX_RETURN.search(src.code) and src.rel[:-4] + ".css" not in css:
+            ctx.add_line("COMPONENT_CSS_PAIR", src.rel, 1, f"{src.rel.rsplit('/', 1)[-1][:-4]}.css is missing")
 
 
 def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
@@ -281,7 +311,9 @@ def check_tsx(ctx: Context) -> None:
             tags = [(tag, style_declarations(src.code, tag)) for tag in jsx_tags(src.code)]
             for tag, decl in tags:
                 check_tag(ctx, src, tag, decl)
+                check_inline_styles(ctx, src, tag)
             check_nesting(ctx, src, tags)
+    check_css_pairs(ctx)
 
 
 CHECKS = [check_tsx]

@@ -177,7 +177,7 @@ Teaches the AI how to build custom activities and form elements in C# for VertiG
 
 ## ✅ Rule Validation
 
-The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (48 Web rules, 28 Workflow rules).
+The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (52 Web rules, 34 Workflow rules).
 
 ### Run the validator
 ```bash
@@ -208,7 +208,7 @@ Minor violations are reported but never fail the run. Use the exit code as a gat
 A rule can be suppressed only with a written reason:
 ```ts
 // vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- portal content renders outside the shell
-/* vertigis-rule-disable-file INLINE_SX -- <reason> */
+/* vertigis-rule-disable-file INLINE_STATIC_STYLE -- <reason> */
 ```
 The first form covers the next line; the `-file` form covers the whole file. A suppression without a reason, with `*`, or with an unknown rule ID is reported as `INVALID_SUPPRESSION` and cannot itself be suppressed.
 
