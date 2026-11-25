@@ -262,7 +262,8 @@ def check_properties(ctx: Context, src) -> None:
             if any(COLOR_LITERAL.search(text) for _, text in string_literals(block)):
                 ctx.add("THEME_HARDCODED_PALETTE", src, index, "palette contains hardcoded colours")
     for index, block in block_after(code, r"\bpalette\s*:\s*\{"):
-        for m in re.finditer(r"\b(main|light|dark|contrastText)\s*:\s*[^,}\n]*var\(", block):
+        # A UI_TOKENS value is a var(...) string too (SKILL.md: "including any UI_TOKENS.* value").
+        for m in re.finditer(r"\b(main|light|dark|contrastText)\s*:\s*[^,}\n]*(?:var\(|\bUI_TOKENS\.|\btokens\.ui\.)", block):
             ctx.add("PALETTE_CSS_VAR", src, index, m.group(0).strip())
     for index, block in block_after(code, r"\bMuiTypography\s*:\s*\{"):
         if re.search(r"(?<![\w-])color\s*:", block):

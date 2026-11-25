@@ -662,12 +662,10 @@ import { TYPOGRAPHY_TOKENS } from "./typography";
  */
 export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
     return createTheme({
+        // palette.primary/secondary/error/warning/info/success go through augmentColor(), which crashes on
+        // var(...) values (PALETTE_CSS_VAR). Keep them at the MUI defaults; set token colours in styleOverrides.
         palette: {
             mode: isDark ? "dark" : "light",
-            primary: {
-                main: UI_TOKENS.accent.primary,
-                contrastText: UI_TOKENS.accent.contrastText,
-            },
             background: {
                 default: UI_TOKENS.surface.primary,
                 paper: UI_TOKENS.surface.secondary,
@@ -678,18 +676,6 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                 disabled: UI_TOKENS.text.disabled,
             },
             divider: UI_TOKENS.border.primary,
-            error: {
-                main: UI_TOKENS.status.errorFg,
-            },
-            success: {
-                main: UI_TOKENS.status.successFg,
-            },
-            warning: {
-                main: UI_TOKENS.status.warningFg,
-            },
-            info: {
-                main: UI_TOKENS.status.infoFg,
-            },
             action: {
                 hover: UI_TOKENS.control.itemHover,
                 selected: UI_TOKENS.control.itemSelected,
@@ -719,6 +705,18 @@ export function createVertiGisWorkflowMuiTheme(isDark: boolean): Theme {
                         textTransform: "none",
                         fontWeight: 600,
                         minHeight: UI_TOKENS.touch.minHeight, // Mobile 44x44px touch target
+                    },
+                    // Use the emphasized pair together. Never put text on accent.primary: brand themes can
+                    // give --primaryAccent and --emphasizedButtonForeground the same colour.
+                    containedPrimary: {
+                        backgroundColor: UI_TOKENS.control.emphasizedButtonBackground,
+                        color: UI_TOKENS.control.emphasizedButtonForeground,
+                        border: `1px solid ${UI_TOKENS.control.emphasizedButtonBorder}`,
+                        "&:hover": {
+                            backgroundColor: UI_TOKENS.control.emphasizedButtonBackgroundHover,
+                            color: UI_TOKENS.control.emphasizedButtonForegroundHover,
+                            borderColor: UI_TOKENS.control.emphasizedButtonBorderHover,
+                        },
                     },
                 },
             },
