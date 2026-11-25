@@ -161,14 +161,20 @@ def check_css_pairs(ctx: Context) -> None:
             ctx.add_line("COMPONENT_CSS_PAIR", src.rel, 1, f"{src.rel.rsplit('/', 1)[-1][:-4]}.css is missing")
 
 
+def text_before_child(code: str, tag: Tag) -> str:
+    """Text between the tag and its first child element. Not text: a JSX comment {/* ... */} (blanked to "{ }"),
+    and an expression that is still open at the first child, such as {flag && ( <Child /> )}."""
+    rest = code[tag.end + 1:]
+    child = re.sub(r"\{\s*\}", "", rest[:rest.find("<")] if "<" in rest else rest).strip()
+    return "" if child.startswith("{") and "}" not in child else child
+
+
 def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
     add = lambda rule, detail="": ctx.add(rule, src, tag.start, detail or f"<{tag.name}>")
     if tag.name == "CssBaseline":
         add("NO_CSS_BASELINE")
     if tag.name in RAW_TEXT_TAGS and not tag.self_closing:
-        rest = src.code[tag.end + 1:]
-        child = rest[:rest.find("<")] if "<" in rest else rest
-        if child.strip():
+        if text_before_child(src.code, tag):
             add("RAW_HTML_TEXT")
     if "minHeight" in decl and plain(decl.get("height", "")) == plain(decl["minHeight"]):
         add("REDUNDANT_DECLARATION", f"<{tag.name}> minHeight equals height")
@@ -216,9 +222,7 @@ def check_nesting(ctx: Context, src, tags: list) -> None:
         if tag.name in PHRASING_TAGS and not tag.self_closing:
             ancestors = [t.name for t, _ in stack]
             if "Typography" not in ancestors:
-                rest = src.code[tag.end + 1:]
-                child = rest[:rest.find("<")] if "<" in rest else rest
-                if child.strip():
+                if text_before_child(src.code, tag):
                     ctx.add("RAW_HTML_TEXT", src, tag.start, f"<{tag.name}> outside <Typography>; use <Typography variant=\"...\"> or wrap inline phrasing inside <Typography>")
         if not tag.self_closing:
             stack.append((tag, decl))
