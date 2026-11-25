@@ -37,13 +37,13 @@ flowchart TD
 
 When performing a code review or when asked to **"Review my code"**, audit the codebase according to the specific extension type and categorize findings by severity level.
 
-For styling findings, run the static styling audit first and base the report on its output rather than on manual searches. If `src/utils/stylingAudit.test.ts` is missing, install it with `python3 vertigis-web-sdk-skill/scripts/install_styling_audit.py --target-dir <repo>`, then run:
+For styling findings, run the rule validator and the Zero-Cosmetic-SX check first. Base the report on their output, not on manual searches:
 
 ```bash
-# Counts per rule
-STYLE_AUDIT_REPORT=1 npx vitest run src/utils/stylingAudit.test.ts -t "prints a report"
-# Violations with line numbers for one file or folder
-STYLE_AUDIT_REPORT=1 STYLE_AUDIT_FILE=src/components/MyWidget npx vitest run src/utils/stylingAudit.test.ts -t "prints a report"
+# All rules, with file and line numbers (use --path <file> for one file)
+python3 vertigis-web-sdk-skill/scripts/validate_web_sdk.py --path <repo>
+# Zero-Cosmetic-SX, 8px spacing grid and non-MUI containment only
+python3 vertigis-web-sdk-skill/scripts/verify_zero_cosmetic_sx.py <repo>
 ```
 
 ### 🧩 A. Web Component Review (`ComponentModelBase` + React View)
