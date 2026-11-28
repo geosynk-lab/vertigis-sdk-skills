@@ -11,12 +11,22 @@ import checks_css
 import checks_tokens
 import checks_tsx
 from engine import run
+from project import BASELINE_NAME
 from report import RENDERERS, exit_code
 
 HERE = Path(__file__).resolve().parent
 CHECKS = checks_tsx.CHECKS + checks_css.CHECKS + checks_tokens.CHECKS + checks_arch.CHECKS
 IMPLEMENTED = (checks_tsx.RULE_IDS | checks_css.RULE_IDS | checks_tokens.RULE_IDS | checks_arch.RULE_IDS
                | {"INVALID_SUPPRESSION"})
+
+
+def baseline_path(args) -> Path | None:
+    if args.no_baseline:
+        return None
+    if args.baseline:
+        return Path(args.baseline)
+    root = Path(args.path)
+    return root / BASELINE_NAME if root.is_dir() else None
 
 
 def main(prog: str, argv: list[str] | None = None) -> int:
@@ -26,6 +36,9 @@ def main(prog: str, argv: list[str] | None = None) -> int:
     parser.add_argument("--output", help="Write the report to this file instead of stdout.")
     parser.add_argument("--rules", default=str(HERE / "rules.json"), help="Rule catalog (default: sibling rules.json).")
     parser.add_argument("--strict", action="store_true", help="Also fail on Major violations.")
+    parser.add_argument("--baseline", help="Known-findings file (default: <path>/.vertigis-baseline.json when present).")
+    parser.add_argument("--update-baseline", action="store_true", help="Write current findings to the baseline, then report.")
+    parser.add_argument("--no-baseline", action="store_true", help="Ignore the baseline: report every finding as new.")
     parser.add_argument("--self-test", action="store_true", help="Run rule fixtures, example and catalog checks.")
     args = parser.parse_args(argv)
     if args.self_test:
@@ -35,7 +48,7 @@ def main(prog: str, argv: list[str] | None = None) -> int:
         parser.error("--path is required (or use --self-test)")
     if not Path(args.path).exists():
         parser.error(f"path not found: {args.path}")
-    result = run(Path(args.path), Path(args.rules), CHECKS)
+    result = run(Path(args.path), Path(args.rules), CHECKS, baseline_path(args), args.update_baseline)
     text = RENDERERS[args.format](result, args.strict)
     if args.output:
         Path(args.output).write_text(re.sub(r"\033\[[\d;]*m", "", text), encoding="utf-8")

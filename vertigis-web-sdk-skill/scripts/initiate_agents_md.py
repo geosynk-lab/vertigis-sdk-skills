@@ -104,7 +104,7 @@ Never treat verification as a single end-of-task formality. Enforce the **6-Tier
 3. **Zero-Cosmetic-SX Check**: `npm run verify:styles` (= `python3 scripts/verify_zero_cosmetic_sx.py`) MUST exit 0.
 4. **Unit & Contract Tests**: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase).
 5. **Production Build**: `npm run build` or `pnpm run build` (clean compilation).
-6. **Rule Validator**: `python3 <skill-dir>/scripts/validate_web_sdk.py --path .` MUST exit 0, where `<skill-dir>` is the installed `vertigis-web-sdk-skill` folder (e.g. `~/.agents/skills/vertigis-web-sdk-skill`). Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`.
+6. **Rule Validator**: `python3 <skill-dir>/scripts/validate_web_sdk.py --path .` MUST exit 0, where `<skill-dir>` is the installed `vertigis-web-sdk-skill` folder (e.g. `~/.agents/skills/vertigis-web-sdk-skill`). Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`. For whole areas (a dev harness, a token source) use `overrides` in `.vertigis-rules.json` at the project root, each with a `reason`; the report lists every override and how many findings it hid. A project that wraps MUI controls lists its UI package in `wrapperLibraries`, so its `IconButton label` counts as the accessible name. Known debt goes in `.vertigis-baseline.json` (`--update-baseline`): baselined findings do not fail, new ones do, and fixed ones are reported for removal.
 - **2-Strike Halt Gate**: If a fix fails verification twice on the same step, STOP. Report what was tried, what failed, and ask for guidance.
 
 ## 8. Ponytail Code Minimization & Zero-Garbage Invariant

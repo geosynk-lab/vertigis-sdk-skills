@@ -76,7 +76,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
   3. `npm run verify:styles` (= `python3 scripts/verify_zero_cosmetic_sx.py`) MUST exit 0.
   4. `npm test` (all tests pass).
   5. `npm run build` (clean compilation).
-  6. `python3 <skill-dir>/scripts/validate_workflow_sdk.py --path .` MUST exit 0, where `<skill-dir>` is the installed `vertigis-workflow-sdk-skill` folder (e.g. `~/.agents/skills/vertigis-workflow-sdk-skill`). Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`."""
+  6. `python3 <skill-dir>/scripts/validate_workflow_sdk.py --path .` MUST exit 0, where `<skill-dir>` is the installed `vertigis-workflow-sdk-skill` folder (e.g. `~/.agents/skills/vertigis-workflow-sdk-skill`). Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`. For whole areas (a dev harness, a token source) use `overrides` in `.vertigis-rules.json` at the project root, each with a `reason`; the report lists every override and how many findings it hid. A project that wraps MUI controls lists its UI package in `wrapperLibraries`, so its `IconButton label` counts as the accessible name. Known debt goes in `.vertigis-baseline.json` (`--update-baseline`): baselined findings do not fail, new ones do, and fixed ones are reported for removal."""
 
 VERTIGIS_DIRECTIVES = f"{START_MARKER}\n{DIRECTIVES_BODY}\n{END_MARKER}"
 
