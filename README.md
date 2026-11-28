@@ -253,7 +253,7 @@ Projects generated from the SDK `template-custom` overlays ship a copy as `npm r
 ---
 
 ## 🎨 Using the skills with vsw-ui
-`@geosynk/vsw-ui` (a separate, private package) is the shared UI package for VertiGIS Studio Web apps: components, tokens, theme and icons. The three pieces have one job each:
+[`@geosynk/vsw-ui`](https://github.com/geosynk-lab/vsw-ui) is the shared UI package for VertiGIS Studio Web apps: components, tokens, theme and icons. The three pieces have one job each:
 
 | Piece | Owns |
 |---|---|
