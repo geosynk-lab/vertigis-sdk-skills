@@ -208,12 +208,12 @@ Minor violations are reported but never fail the run. Use the exit code as a gat
 A rule can be suppressed only with a written reason:
 ```ts
 // vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- portal content renders outside the shell
-/* vertigis-rule-disable-file INLINE_SX -- <reason> */
+/* vertigis-rule-disable-file INLINE_STATIC_STYLE -- <reason> */
 ```
 The first form covers the next line; the `-file` form covers the whole file. A suppression without a reason, with `*`, or with an unknown rule ID is reported as `INVALID_SUPPRESSION` and cannot itself be suppressed.
 
 ### Zero-Cosmetic-SX check (standalone)
-`scripts/verify_zero_cosmetic_sx.py` (identical in both skills) implements `NO_COSMETIC_SX`, `STANDARDIZED_SPACING` and `NON_MUI_CONTAINMENT`. The validator imports the same file, so there is one source of truth. It can also run on its own:
+`scripts/verify_zero_cosmetic_sx.py` (identical in both skills) implements `NO_COSMETIC_SX`, `STANDARDIZED_SPACING`, `NON_MUI_CONTAINMENT` and `MARGIN_LEAKAGE`. The validator imports the same file for the last three. `NO_COSMETIC_SX` (no cosmetic keys in `sx` at all, every look in the theme) is an opt-in house rule for theme-first projects: it runs only here, as `npm run verify:styles`, because the skill's token-pairing guidance puts token colour pairs in `sx`. It can also run on its own:
 ```bash
 python3 vertigis-web-sdk-skill/scripts/verify_zero_cosmetic_sx.py /path/to/project
 ```

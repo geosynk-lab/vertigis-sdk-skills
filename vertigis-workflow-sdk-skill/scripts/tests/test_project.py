@@ -86,6 +86,13 @@ def test_baseline_counts_duplicates():
     assert exit_code(validate(root), False) == 1
 
 
+def test_external_rule_suppression_is_valid_only_with_reason():
+    ok = project({"src/Icon.tsx": "// vertigis-rule-disable NO_COSMETIC_SX -- icon size lives here\nexport const x = 1;\n"})
+    assert "INVALID_SUPPRESSION" not in rules(validate(ok)), rules(validate(ok))
+    bad = project({"src/Icon.tsx": "// vertigis-rule-disable NO_COSMETIC_SX\nexport const x = 1;\n"})
+    assert "INVALID_SUPPRESSION" in rules(validate(bad))
+
+
 def main() -> int:
     failures = 0
     for name, fn in sorted(globals().items()):

@@ -4,13 +4,13 @@ from __future__ import annotations
 import posixpath
 import re
 
-from engine import Context, in_tokens_dir, matching_close, string_literals
+from engine import Context, matching_close, string_literals
 
 RULE_IDS = {
     "HANDLES_FIELD_DECLARED", "LIFECYCLE_SUPER_ORDER", "MODEL_VIEW_SEPARATION", "OBSERVER_WRAPPING",
     "LAYOUT_ELEMENT_WRAPPER", "ACTIVE_PROP_HIDING", "ERROR_BOUNDARY", "DESIGNER_EMPTY_ATTRIBUTE",
     "FILE_LENGTH_TARGET", "FILE_LENGTH_CEILING", "FORM_PROPS_WIRING", "ACTIVITY_HANDLER_PATTERN",
-    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "COMPONENT_CSS_PAIR",
+    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "UNGUARDED_DEV_AUTH",
 }
 
 MODEL_BASE = re.compile(r"\bclass\s+\w+[^{]*\bextends\s+(ComponentModelBase|ModelBase)\b")
@@ -23,7 +23,6 @@ VISIBLE_GUARD = re.compile(r"if\s*\(\s*!\s*(?:props\.)?visible\s*\)\s*\{?\s*retu
                            r"!\s*(?:props\.)?visible\s*\?\s*null")
 JSX_SYNTAX = re.compile(r"</[A-Za-z][\w.]*\s*>|<[A-Za-z][\w.]*(?:\s[^<>]*)?/>|</>|"
                         r"(?:return|=>)\s*\(?\s*<[A-Za-z][\w.]*[\s>]")
-JSX_RETURN = re.compile(r"(?:return|=>)\s*\(?\s*<[A-Za-z>]")
 
 
 def template_end(code: str, i: int) -> int:
@@ -68,20 +67,25 @@ def check_jsx_in_ts(ctx: Context, src) -> None:
         ctx.add("JSX_IN_TS", src, m.start(), m.group(0).strip())
 
 
-def check_css_pair(ctx: Context) -> None:
-    if ctx.single_file:
-        return
-    present = {f.rel for f in ctx.files}
-    for src in ctx.files:
-        if src.kind != "tsx" or src.is_test or in_tokens_dir(src.rel):
+DEV_AUTH_CALL = re.compile(r"(?<![\w.])initPortalAuth\s*\(")
+DEV_AUTH_DEF = re.compile(r"(?:function\s+initPortalAuth\s*\([^)]*\)[^{]*|initPortalAuth\s*=\s*(?:async\s*)?\([^)]*\)[^{=]*=>\s*)\{")
+NOT_PROD_GUARD = re.compile(r"if\s*\(\s*process\.env\.NODE_ENV\s*!==?\s*[\"']production[\"']\s*\)\s*\{")
+PROD_RETURN = re.compile(r"\s*if\s*\(\s*process\.env\.NODE_ENV\s*===?\s*[\"']production[\"']\s*\)\s*\{?\s*return\b")
+
+
+def check_dev_auth(ctx: Context, src) -> None:
+    """Dev OAuth must never reach a production bundle: guard every call and make the function a no-op in prod."""
+    code = src.code
+    defs = [(m.start(), m.end()) for m in DEV_AUTH_DEF.finditer(code)]
+    guards = [(m.end() - 1, matching_close(code, m.end() - 1)) for m in NOT_PROD_GUARD.finditer(code)]
+    for m in DEV_AUTH_CALL.finditer(code):
+        if any(start <= m.start() < end for start, end in defs):
             continue
-        m = JSX_RETURN.search(without_strings(src.code))
-        css = src.rel[:-len(".tsx")] + ".css"
-        folder = posixpath.dirname(src.rel)
-        # A component's look may live in <Name>.css, or in a *.theme.ts next to it (MUI styleOverrides).
-        themed = any(posixpath.dirname(f) == folder and f.endswith(".theme.ts") for f in present)
-        if m and css not in present and not themed:
-            ctx.add("COMPONENT_CSS_PAIR", src, m.start(), f"missing {posixpath.basename(css)} or a *.theme.ts")
+        if not any(open_ < m.start() < close for open_, close in guards):
+            ctx.add("UNGUARDED_DEV_AUTH", src, m.start(), "initPortalAuth() outside if (process.env.NODE_ENV !== \"production\")")
+    for start, end in defs:
+        if not PROD_RETURN.match(code, end):
+            ctx.add("UNGUARDED_DEV_AUTH", src, start, "initPortalAuth must start with if (process.env.NODE_ENV === \"production\") return;")
 
 
 def method_body(code: str, name: str):
@@ -180,6 +184,7 @@ def check_arch(ctx: Context) -> None:
         for m in re.finditer(r"attributes\.set\(\s*[^,()]+,\s*(\"\"|''|``)\s*\)", src.code):
             ctx.add("DESIGNER_EMPTY_ATTRIBUTE", src, m.start(), m.group(0))
         if ctx.sdk == "web":
+            check_dev_auth(ctx, src)
             check_model(ctx, src)
             check_web_view(ctx, src)
         else:
@@ -189,8 +194,6 @@ def check_arch(ctx: Context) -> None:
                 check_barrel(ctx, src)
     if ctx.sdk == "workflow":
         check_form_elements(ctx)
-    else:
-        check_css_pair(ctx)
 
 
 CHECKS = [check_arch]

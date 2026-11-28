@@ -16,6 +16,9 @@ SOURCE_EXT = (".ts", ".tsx", ".css")
 SEVERITIES = ("critical", "major", "minor")
 TEST_FILE_RULES = {"DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "INVALID_SUPPRESSION"}
 UNSUPPRESSIBLE = {"INVALID_SUPPRESSION"}
+# Rules enforced only by the opt-in Tier 3 tool (verify_zero_cosmetic_sx.py). A suppression naming one is valid
+# here (that tool reads it) but hides nothing in this validator.
+EXTERNAL_RULES = {"NO_COSMETIC_SX"}
 TOKEN_VAR = re.compile(r"var\(\s*--([\w-]+)\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)")
 SUPPRESSION = re.compile(r"vertigis-rule-disable(-file)?([^\n]*)")
 SUPPRESSION_BODY = re.compile(r"^\s+([A-Za-z0-9_*]+)\s*(?:--\s*(.*\S))?\s*$")
@@ -228,6 +231,8 @@ def parse_suppressions(ctx: Context) -> list[Suppression]:
             parsed = SUPPRESSION_BODY.match(body)
             rule, reason = (parsed.group(1), parsed.group(2)) if parsed else ("", None)
             line = src.line_of(m.start())
+            if rule in EXTERNAL_RULES and reason:
+                continue
             if not rule or "*" in rule or rule not in ctx.catalog or rule in UNSUPPRESSIBLE or not reason:
                 ctx.add_line("INVALID_SUPPRESSION", src.rel, line, m.group(0).strip())
                 continue

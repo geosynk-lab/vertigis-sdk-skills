@@ -4,17 +4,23 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+import verify_zero_cosmetic_sx as zero_cosmetic
+
 from engine import (TOKEN_VAR, COLOR_LITERAL, Context, color_literal, in_tokens_dir, matching_close,
                     normalize_hex, split_top_level, string_literals)
 
 RULE_IDS = {
-    "NO_CSS_BASELINE", "RAW_HTML_TEXT", "TYPOGRAPHY_COLOR_OVERRIDE", "SX_COLOR_ON_CONTROL", "INLINE_SX",
+    "NO_CSS_BASELINE", "RAW_HTML_TEXT", "TYPOGRAPHY_COLOR_OVERRIDE", "SX_COLOR_ON_CONTROL",
     "INLINE_STATIC_STYLE", "MIXED_CLASS_AND_STYLE", "LEGACY_SLOT_PROPS", "MISSING_A11Y",
     "DIALOG_GLOBAL_OVERRIDE", "HARDCODED_COLOR", "INLINE_TOKEN_LITERAL", "TOKEN_FALLBACK_DRIFT",
     "FONT_FAMILY", "HARDCODED_RADIUS", "PALETTE_CSS_VAR", "THEME_HARDCODED_PALETTE", "THEME_DYNAMIC_HOOK",
     "DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "ARCGIS_IMPORT_STYLE", "TYPOGRAPHY_SX_OVERRIDE",
-    "REDUNDANT_DECLARATION", "INLINE_SX_LAYOUT",
+    "REDUNDANT_DECLARATION", "DISABLED_TOOLTIP_WRAPPER", "UNSCOPED_THEME_OVERRIDE",
 }
+# NO_COSMETIC_SX (no cosmetic keys in sx at all) is a theme-first house rule that contradicts this skill's
+# token-pairing guidance, so it runs only in projects that opt in via verify_zero_cosmetic_sx.py (Tier 3).
+SHARED_ZERO_COSMETIC = set(zero_cosmetic.RULES) - {"NO_COSMETIC_SX"}
+RULE_IDS |= SHARED_ZERO_COSMETIC
 
 CONTROLS = {"Button", "TextField", "Select", "Radio", "Checkbox", "Switch", "DatePicker", "TimePicker", "Tabs"}
 RAW_TEXT_TAGS = {"p", "span", "label", "h1", "h2", "h3", "h4", "h5", "h6"}
@@ -24,7 +30,9 @@ CONTROL_COLOR = re.compile(r"(?<![\w-])[\"']?(color|bgcolor|backgroundColor|bord
 STATIC_VALUE = re.compile(r"^([\"'][^\"'$]*[\"']|`[^`$]*`|-?\d+(\.\d+)?|true|false|[A-Z_]+_TOKENS(\.\w+)+)$")
 TAG_START = re.compile(r"<([A-Za-z][\w.]*)")
 CLOSE_TAG = re.compile(r"</([A-Za-z][\w.]*)\s*>")
-LAYOUT_TAGS = {"Box", "Stack", "Grid", "Container", "div", "span", "img"}
+PHRASING_TAGS = {"b", "strong", "i", "em", "u"}
+MARGIN_PROPS = {"m", "mx", "my", "mt", "mb", "ml", "mr", "margin", "marginTop", "marginBottom", "marginLeft",
+                "marginRight", "marginX", "marginY"}
 TYPE_PROPS = ("fontSize", "fontWeight", "lineHeight", "letterSpacing")
 FLEX_DISPLAY = {"flex", "inline-flex", "grid", "inline-grid"}
 
@@ -154,8 +162,6 @@ def check_tag(ctx: Context, src, tag: Tag, decl: dict, imports: dict | None = No
             add("RAW_HTML_TEXT")
     sx = tag.value("sx")
     sx_inline = sx is not None and sx.strip()[:1] in ("{", "[")
-    if sx_inline:
-        add("INLINE_SX_LAYOUT" if tag.name in LAYOUT_TAGS else "INLINE_SX")
     type_props = [p for p in TYPE_PROPS if p in decl]
     if tag.name == "Typography" and type_props:
         add("TYPOGRAPHY_SX_OVERRIDE", f"<Typography> {', '.join(type_props)}")
@@ -209,6 +215,19 @@ def check_nesting(ctx: Context, src, tags: list) -> None:
                 ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> display: block inside a flex/grid parent")
             if "color" in decl and plain(decl["color"]) == plain(parent.get("color", "")):
                 ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> color repeats the parent colour")
+            parent_tag = stack[-1][0]
+            if parent_tag.name == "Tooltip" and tag.name in ("Button", "IconButton") and tag.has("disabled"):
+                ctx.add("DISABLED_TOOLTIP_WRAPPER", src, tag.start, f"<{tag.name} disabled> directly inside <Tooltip>; "
+                        "wrap in <span> so pointer events fire")
+            if parent_tag.name == "Stack" and tag.name == "Divider" and any(
+                    k in decl or tag.has(k) for k in ("my", "mt", "mb", "margin", "marginTop", "marginBottom", "marginY")):
+                ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Divider> inside <Stack> has vertical margin; Stack spacing separates")
+        if tag.name == "Stack" and any(k in decl or tag.has(k) for k in MARGIN_PROPS):
+            ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Stack> declares external margin; manage spacing on the parent")
+        if tag.name in PHRASING_TAGS and not tag.self_closing and "Typography" not in [t.name for t, _ in stack]:
+            rest = src.code[tag.end + 1:]
+            if (rest[:rest.find("<")] if "<" in rest else rest).strip():
+                ctx.add("RAW_HTML_TEXT", src, tag.start, f"<{tag.name}> outside <Typography>")
         if not tag.self_closing:
             stack.append((tag, decl))
 
@@ -256,6 +275,11 @@ def check_properties(ctx: Context, src) -> None:
     for index, block in block_after(code, r"\bMuiTypography\s*:\s*\{"):
         if re.search(r"(?<![\w-])color\s*:", block):
             ctx.add("THEME_HARDCODED_PALETTE", src, index, "MuiTypography color override blocks color= props")
+    for comp in ("MuiCard", "MuiTableCell", "MuiPaper"):
+        for index, block in block_after(code, rf"\b{comp}\s*:\s*\{{"):
+            for m in re.finditer(r"[\"']?(&\[data-status=[^\]]+\])[\"']?\s*:", block):
+                ctx.add("UNSCOPED_THEME_OVERRIDE", src, index, f"{comp} overrides unscoped {m.group(1)}; "
+                        "prefix with the component class (&.MyComponent-root[data-status=...])")
     if renderer and not re.search(r"\b(useIsDarkTheme|useDarkTheme|isDarkTheme|isDark)\b", code):
         ctx.add("THEME_DYNAMIC_HOOK", src, renderer.start(), renderer.group(0))
 
@@ -303,6 +327,10 @@ def check_tsx(ctx: Context) -> None:
             continue
         check_strings(ctx, src)
         check_properties(ctx, src)
+        if not in_tokens_dir(src.rel):
+            for rule, index, detail in zero_cosmetic.check_source(src.code, src.rel):
+                if rule in SHARED_ZERO_COSMETIC:
+                    ctx.add(rule, src, index, detail)
         if src.kind == "tsx":
             tags = [(tag, style_declarations(src.code, tag)) for tag in jsx_tags(src.code)]
             imports = named_imports(src.code)

@@ -19,7 +19,7 @@ LANG = {"typescript": "ts", "jsx": "tsx"}
 PATH_HINT = re.compile(r"`((?:[\w.<>-]+/)*[\w.<>-]+\.(?:tsx?|css))`")
 WHOLE_FILE_RULES = {"ERROR_BOUNDARY", "FORM_PROPS_WIRING", "OBSERVER_WRAPPING", "LAYOUT_ELEMENT_WRAPPER",
                     "MODEL_VIEW_SEPARATION"}
-CROSS_FILE_RULES = {"COMPONENT_CSS_PAIR"}
+CROSS_FILE_RULES: set[str] = set()
 
 
 def example_path(text: str, start: int, lang: str) -> str:
