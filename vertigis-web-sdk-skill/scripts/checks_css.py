@@ -9,7 +9,7 @@ RULE_IDS = {
     "CSS_ROOT_SCOPE", "TOKEN_REALIAS", "FONT_FAMILY", "HARDCODED_RADIUS", "HARDCODED_COLOR",
     "TOKEN_FALLBACK_DRIFT", "CSS_GENERIC_CLASS", "CSS_MUI_OVERRIDE", "CSS_IMPORTANT",
     "CSS_ORPHAN_CLASS", "CSS_DUPLICATE_CLASS", "WORKFLOW_CSS_FILE", "REDUNDANT_DECLARATION", "HARDCODED_SPACING",
-    "EMPTY_CSS_FILE", "COMPONENT_CSS_FILE",
+    "EMPTY_CSS_FILE", "COMPONENT_CSS_FILE", "APP_COSMETIC_CSS",
 }
 
 SELECTOR = re.compile(r"([^{};]+)\{")
@@ -42,11 +42,19 @@ def check_selectors(ctx: Context, src, classes: dict, top_level: dict) -> None:
                 top_level.setdefault(top.group(1), {}).setdefault(src.rel, src.line_of(index))
 
 
+# Profile vsw-ui: an app has no look of its own, so its CSS may only lay things out.
+COSMETIC_CSS = re.compile(r"color|background(-[\w-]+)?|border(-[\w-]+)?|outline(-[\w-]+)?|box-shadow|text-shadow|filter|"
+                          r"backdrop-filter|font(-[\w-]+)?|line-height|letter-spacing|text-transform|text-decoration(-[\w-]+)?")
+
+
 def check_declarations(ctx: Context, src) -> None:
     tokens_file = in_tokens_dir(src.rel)
+    app_mode = ctx.config.get("profile") == "vsw-ui"
     for m in DECLARATION.finditer(src.code):
         prop, value = m.group(1), m.group(2).strip()
         index = m.start()
+        if app_mode and COSMETIC_CSS.fullmatch(prop) and prop != "border-collapse":
+            ctx.add("APP_COSMETIC_CSS", src, index, f"{prop}: {value}")
         if prop.startswith("--") and value.startswith("var("):
             ctx.add("TOKEN_REALIAS", src, index, f"{prop}: {value}")
         if "!important" in value and not (prop == "display" and value.startswith("none")):

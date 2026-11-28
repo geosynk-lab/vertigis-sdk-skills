@@ -1,0 +1,4 @@
+.Panel-body {
+    display: flex;
+    gap: var(--spacingSm, 8px);
+}

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "package": "@geosynk/vsw-ui",
+  "components": [
+    {
+      "name": "DataGrid",
+      "entry": "@geosynk/vsw-ui/data-grid",
+      "useFor": "A data table",
+      "replaces": [
+        {
+          "module": "@mui/x-data-grid"
+        }
+      ]
+    },
+    {
+      "name": "Button",
+      "entry": "@geosynk/vsw-ui",
+      "useFor": "An action",
+      "replaces": [
+        {
+          "module": "@mui/material",
+          "imports": [
+            "Button"
+          ]
+        }
+      ]
+    }
+  ]
+}

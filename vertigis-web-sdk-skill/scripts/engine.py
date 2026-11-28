@@ -58,7 +58,8 @@ class Context:
     canonical: dict = field(default_factory=dict)
     violations: list = field(default_factory=list)
     single_file: bool = False
-    config: dict = field(default_factory=lambda: {"wrapperLibraries": [], "overrides": []})
+    config: dict = field(default_factory=lambda: {"wrapperLibraries": [], "overrides": [], "profile": None,
+                                                  "contract": None})
 
     def add(self, rule: str, src: SourceFile, index: int, detail: str = "") -> None:
         self.violations.append(Violation(rule, src.rel, src.line_of(index), detail))

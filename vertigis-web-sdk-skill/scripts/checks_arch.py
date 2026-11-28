@@ -10,7 +10,7 @@ RULE_IDS = {
     "HANDLES_FIELD_DECLARED", "LIFECYCLE_SUPER_ORDER", "MODEL_VIEW_SEPARATION", "OBSERVER_WRAPPING",
     "LAYOUT_ELEMENT_WRAPPER", "ACTIVE_PROP_HIDING", "ERROR_BOUNDARY", "DESIGNER_EMPTY_ATTRIBUTE",
     "FILE_LENGTH_TARGET", "FILE_LENGTH_CEILING", "FORM_PROPS_WIRING", "ACTIVITY_HANDLER_PATTERN",
-    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "UNGUARDED_DEV_AUTH",
+    "BARREL_EXPORT_NAMING", "JSX_IN_TS", "UNGUARDED_DEV_AUTH", "UI_IMPORT",
 }
 
 MODEL_BASE = re.compile(r"\bclass\s+\w+[^{]*\bextends\s+(ComponentModelBase|ModelBase)\b")
@@ -74,6 +74,34 @@ def check_jsx_in_ts(ctx: Context, src) -> None:
     m = JSX_SYNTAX.search(without_strings(src.code))
     if m:
         ctx.add("JSX_IN_TS", src, m.start(), m.group(0).strip())
+
+
+IMPORT_FROM = re.compile(r"\bimport\s+(type\s+)?([^;'\"]*?)\s*from\s*[\"']([^\"']+)[\"']")
+
+
+def check_ui_imports(ctx: Context, src) -> None:
+    """UI_IMPORT (profile vsw-ui): an import that a vsw-ui component replaces, judged by the installed contract."""
+    contract = ctx.config.get("contract")
+    if not contract:
+        return
+    for m in IMPORT_FROM.finditer(src.code):
+        if m.group(1):
+            continue  # import type: no runtime UI
+        clause, module = m.group(2), m.group(3)
+        braces = re.search(r"\{([^}]*)\}", clause)
+        named = {p.split(" as ")[0].replace("type ", "").strip() for p in (braces.group(1).split(",") if braces else [])}
+        named.discard("")
+        for c in contract["components"]:
+            use = f"use {c['name']} from {c['entry']}"
+            for r in c["replaces"]:
+                if r.get("imports"):
+                    hits = sorted(named & set(r["imports"])) if module == r["module"] else []
+                    for name in hits:
+                        ctx.add("UI_IMPORT", src, m.start(), f"{name} from {module}: {use}")
+                elif module == r["module"] or module.startswith(r["module"] + "/"):
+                    ctx.add("UI_IMPORT", src, m.start(), f"{module}: {use}")
+        if module.startswith("@mui/material/") and module != "@mui/material/styles":
+            ctx.add("UI_IMPORT", src, m.start(), f"{module}: import layout from @mui/material, or use a vsw-ui component")
 
 
 def method_body(code: str, name: str):
@@ -213,6 +241,7 @@ def check_arch(ctx: Context) -> None:
             check_model(ctx, src)
             check_web_view(ctx, src)
             check_dev_auth(ctx, src)
+            check_ui_imports(ctx, src)
         else:
             if re.search(r"(^|/)activities/", src.rel):
                 check_activity(ctx, src)

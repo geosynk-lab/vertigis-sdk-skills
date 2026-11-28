@@ -23,17 +23,32 @@ from pathlib import Path
 
 CONFIG_NAME = ".vertigis-rules.json"
 BASELINE_NAME = ".vertigis-baseline.json"
+DEFAULT_CONTRACT = "node_modules/@geosynk/vsw-ui/contract/components.json"
+EMPTY = {"wrapperLibraries": [], "overrides": [], "profile": None, "contract": None}
+
+# A profile is a named, reported override for a whole project type. "vsw-ui": an app whose UI comes only from
+# @geosynk/vsw-ui. vsw-ui builds and checks the tokens, theme and component styling once in its own CI, so these
+# rules have nothing to find in app code; UI_IMPORT and APP_COSMETIC_CSS make sure the app cannot style itself.
+PROFILES = {
+    "vsw-ui": {
+        "reason": "profile vsw-ui: tokens, theme and component styling come from @geosynk/vsw-ui and are checked there",
+        "off": {"PALETTE_CSS_VAR", "THEME_HARDCODED_PALETTE", "TOKEN_FALLBACK_DRIFT", "TOKEN_PAIRING", "TOKEN_CONTRAST",
+                "TOKEN_REALIAS", "TOKEN_EXACT_NAME", "SPACING_TOKENS_DECLARED", "INLINE_TOKEN_LITERAL",
+                "REDUNDANT_INHERITED_TOKEN", "UNSCOPED_THEME_OVERRIDE", "COMPONENT_CSS_PAIR", "DISABLED_TOOLTIP_WRAPPER"},
+        "wrapper": "@geosynk/vsw-ui",
+    },
+}
 
 
 def load_config(root: Path, catalog: dict) -> tuple[dict, list[str]]:
     """Return (config, problems). A problem becomes an INVALID_SUPPRESSION finding on the config file."""
     path = Path(root) / CONFIG_NAME
     if not Path(root).is_dir() or not path.is_file():
-        return {"wrapperLibraries": [], "overrides": []}, []
+        return dict(EMPTY), []
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except ValueError as err:
-        return {"wrapperLibraries": [], "overrides": []}, [f"{CONFIG_NAME} is not valid JSON: {err}"]
+        return dict(EMPTY), [f"{CONFIG_NAME} is not valid JSON: {err}"]
     problems, overrides = [], []
     for i, entry in enumerate(data.get("overrides", [])):
         files, off, reason = entry.get("files") or [], entry.get("off") or [], str(entry.get("reason", "")).strip()
@@ -43,7 +58,28 @@ def load_config(root: Path, catalog: dict) -> tuple[dict, list[str]]:
                             + (f"; unknown: {', '.join(unknown)}" if unknown else ""))
             continue
         overrides.append({"files": list(files), "off": set(off), "reason": reason, "hidden": 0})
-    return {"wrapperLibraries": list(data.get("wrapperLibraries", [])), "overrides": overrides}, problems
+    config = {"wrapperLibraries": list(data.get("wrapperLibraries", [])), "overrides": overrides,
+              "profile": data.get("profile"), "contract": None}
+    problems += apply_profile(config, Path(root), data.get("contract") or DEFAULT_CONTRACT, catalog)
+    return config, problems
+
+
+def apply_profile(config: dict, root: Path, contract_path: str, catalog: dict) -> list[str]:
+    name = config["profile"]
+    if name is None:
+        return []
+    profile = PROFILES.get(name)
+    if profile is None:
+        return [f"unknown profile {name!r}; known: {', '.join(sorted(PROFILES))}"]
+    path = root / contract_path
+    if not path.is_file():
+        return [f"profile {name} needs the vsw-ui contract at {contract_path} (is @geosynk/vsw-ui installed?)"]
+    config["contract"] = json.loads(path.read_text(encoding="utf-8"))
+    if profile["wrapper"] not in config["wrapperLibraries"]:
+        config["wrapperLibraries"].append(profile["wrapper"])
+    config["overrides"].append({"files": ["**"], "off": {r for r in profile["off"] if r in catalog},
+                                "reason": profile["reason"], "hidden": 0})
+    return []
 
 
 def apply_overrides(violations: list, overrides: list) -> list:

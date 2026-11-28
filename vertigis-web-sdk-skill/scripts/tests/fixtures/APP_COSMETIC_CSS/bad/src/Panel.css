@@ -1,0 +1,5 @@
+.Panel-body {
+    display: flex;
+    color: var(--secondaryForeground, #666666);
+    border-bottom: 1px solid var(--primaryBorder, #cccccc);
+}

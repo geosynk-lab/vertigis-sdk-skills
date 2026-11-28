@@ -86,6 +86,23 @@ def test_baseline_counts_duplicates():
     assert exit_code(validate(root), False) == 1
 
 
+def test_profile_needs_known_name_and_contract():
+    assert "INVALID_SUPPRESSION" in rules(validate(project({"src/a.css": ".A-x { display: flex; }\n"}, {"profile": "nope"})))
+    assert "INVALID_SUPPRESSION" in rules(validate(project({"src/a.css": ".A-x { display: flex; }\n"}, {"profile": "vsw-ui"})))
+
+
+def test_profile_vsw_ui_turns_token_rules_off_and_reports_it():
+    if json.loads((HERE / "rules.json").read_text())["sdk"] != "web":
+        return  # vsw-ui is a Web SDK package; the workflow catalogue has none of these token rules
+    contract = {"version": 1, "package": "@geosynk/vsw-ui", "components": []}
+    root = project({"src/Panel.css": ".Panel-x { --a: var(--b); }\n", "src/p.ts": 'export const P = "Panel-x";\n',
+                    "contract/components.json": json.dumps(contract)},
+                   {"profile": "vsw-ui", "contract": "contract/components.json"})
+    result = validate(root)
+    assert "TOKEN_REALIAS" not in rules(result), rules(result)
+    assert any("profile vsw-ui" in o["reason"] and o["hidden"] >= 1 for o in result["overrides"])
+
+
 def main() -> int:
     failures = 0
     for name, fn in sorted(globals().items()):
