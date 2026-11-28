@@ -157,7 +157,10 @@ def check_css_pairs(ctx: Context) -> None:
     for src in ctx.files:
         if src.kind != "tsx" or src.is_test or in_tokens_dir(src.rel) or src.rel.endswith(".stories.tsx"):
             continue
-        if JSX_RETURN.search(src.code) and src.rel[:-4] + ".css" not in css:
+        folder = src.rel.rsplit("/", 1)[0] if "/" in src.rel else ""
+        themed = any((f.rel.rsplit("/", 1)[0] if "/" in f.rel else "") == folder and f.rel.endswith(".theme.ts")
+                     for f in ctx.files)
+        if JSX_RETURN.search(src.code) and src.rel[:-4] + ".css" not in css and not themed:
             ctx.add_line("COMPONENT_CSS_PAIR", src.rel, 1, f"{src.rel.rsplit('/', 1)[-1][:-4]}.css is missing")
 
 
@@ -169,7 +172,8 @@ def text_before_child(code: str, tag: Tag) -> str:
     return "" if child.startswith("{") and "}" not in child else child
 
 
-def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
+def check_tag(ctx: Context, src, tag: Tag, decl: dict, imports: dict | None = None) -> None:
+    imports = imports or {}
     add = lambda rule, detail="": ctx.add(rule, src, tag.start, detail or f"<{tag.name}>")
     if tag.name == "CssBaseline":
         add("NO_CSS_BASELINE")
@@ -184,10 +188,14 @@ def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
         add("MIXED_CLASS_AND_STYLE")
     for m in LEGACY_PROPS.finditer(tag.top):
         add("LEGACY_SLOT_PROPS", f"<{tag.name}> {m.group(1)}")
-    if tag.name == "IconButton" and not tag.has("aria-label"):
-        add("MISSING_A11Y", "<IconButton> without aria-label")
-    if tag.name == "TextField" and not tag.has("label") and "aria-label" not in tag.attrs:
-        add("MISSING_A11Y", "<TextField> without label or aria-label")
+    module, control = imports.get(tag.name, ("", tag.name))
+    wrapper = module.startswith(".") or any(module == w or module.startswith(w + "/")
+                                            for w in ctx.config["wrapperLibraries"])
+    named = tag.has("aria-label") or (wrapper and tag.has("label"))
+    if control == "IconButton" and not named:
+        add("MISSING_A11Y", f"<{tag.name}> without " + ("label or aria-label" if wrapper else "aria-label"))
+    if control == "TextField" and not tag.has("label") and "aria-label" not in tag.attrs:
+        add("MISSING_A11Y", f"<{tag.name}> without label or aria-label")
     if ctx.sdk == "workflow" and tag.name in CLICKABLE_TAGS and tag.has("onClick") and not tag.has("onKeyDown"):
         add("MISSING_A11Y", f"<{tag.name}> onClick without onKeyDown")
     if tag.name == "GlobalStyles" and re.search(r"role=\\?[\"']?dialog|MuiDialogContent-root", tag.attrs):
@@ -300,6 +308,20 @@ def check_imports(ctx: Context, src) -> None:
         ctx.add("ARCGIS_IMPORT_STYLE", src, m.start(), m.group(0))
 
 
+NAMED_IMPORT = re.compile(r"import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*[\"']([^\"']+)[\"']")
+
+
+def named_imports(code: str) -> dict:
+    """Local name -> (module, imported name), so an aliased or wrapped control is judged by its origin."""
+    out = {}
+    for m in NAMED_IMPORT.finditer(code):
+        for part in m.group(1).split(","):
+            names = part.replace("type ", "").split(" as ")
+            if names[0].strip():
+                out[names[-1].strip()] = (m.group(2), names[0].strip())
+    return out
+
+
 def check_tsx(ctx: Context) -> None:
     for src in ctx.files:
         if src.kind not in ("ts", "tsx"):
@@ -314,8 +336,9 @@ def check_tsx(ctx: Context) -> None:
                 ctx.add(rule, src, index, detail)
         if src.kind == "tsx":
             tags = [(tag, style_declarations(src.code, tag)) for tag in jsx_tags(src.code)]
+            imports = named_imports(src.code)
             for tag, decl in tags:
-                check_tag(ctx, src, tag, decl)
+                check_tag(ctx, src, tag, decl, imports)
                 check_inline_styles(ctx, src, tag)
             check_nesting(ctx, src, tags)
     check_css_pairs(ctx)
