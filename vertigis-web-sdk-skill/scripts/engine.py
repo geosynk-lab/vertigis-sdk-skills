@@ -183,19 +183,7 @@ def color_literal(text: str) -> str | None:
 def collect_files(root: Path) -> list[SourceFile]:
     root = Path(root)
     if root.is_file():
-        posix = root.as_posix()
-        if "/" in posix and not root.is_absolute():
-            rel = posix
-        else:
-            try:
-                rel = root.resolve().relative_to(Path.cwd().resolve()).as_posix()
-            except ValueError:
-                parts = root.resolve().parts
-                if "src" in parts:
-                    rel = "/".join(parts[parts.index("src"):])
-                else:
-                    rel = root.name
-        pairs = [(root, rel)]
+        pairs = [(root, root.name)]
     else:
         scan = root / "src" if (root / "src").is_dir() else root
         pairs = []

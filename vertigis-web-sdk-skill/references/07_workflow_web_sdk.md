@@ -130,13 +130,18 @@ function RatingElement(props: RatingElementProps): React.ReactElement {
                         }}
                         aria-label={`Rate ${starNumber} out of ${maxRating} stars`}
                         aria-pressed={isActive}
-                        color={isActive ? "primary" : "default"}
+                        sx={{
+                            color: isActive ? "var(--primaryAccent)" : "var(--primaryBorder)",
+                            "&:hover": {
+                                transform: enabled && !readOnly ? "scale(1.1)" : "none",
+                            }
+                        }}
                     >
                         ★
                     </IconButton>
                 );
             })}
-            <Typography variant="body2" color="text.secondary" aria-live="polite">
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }} aria-live="polite">
                 {value ? `${value} / ${maxRating}` : "Unrated"}
             </Typography>
         </Stack>

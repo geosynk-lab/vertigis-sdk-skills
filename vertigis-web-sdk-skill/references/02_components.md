@@ -200,19 +200,19 @@ const MyWidget = observer(function MyWidget(props: MyWidgetProps): React.ReactEl
 export default MyWidget;
 ```
 
-Global layout lives in `src/styles/app.css` (component-level CSS files in `src/components/` are prohibited):
+Layout lives in the co-located `src/components/MyWidget/MyWidget.css`:
 
 ```css
-.app-layout {
+.MyWidget {
     padding: var(--spacingLg, 16px);
 }
 
-.app-layout--bordered {
+.MyWidget--bordered {
     border: 1px solid var(--primaryBorder, #e0e0e0);
     border-radius: var(--borderRadius, 4px);
 }
 
-.app-layout-surface {
+.MyWidget-surface {
     margin-bottom: var(--spacingLg, 16px);
     padding: var(--spacingMd, 12px);
     border: 1px solid var(--primaryBorder, #e0e0e0);
@@ -220,7 +220,7 @@ Global layout lives in `src/styles/app.css` (component-level CSS files in `src/c
     background-color: var(--secondaryBackground, #f5f5f5);
 }
 
-.app-layout-row {
+.MyWidget-row {
     margin-bottom: var(--spacingSm, 8px);
 }
 
@@ -490,7 +490,7 @@ VertiGIS Studio Web enforces a strict, tokenized design architecture. Custom com
 
 ### 4.1 Typography System
 
-All textual content in VertiGIS Web components must be rendered through `@mui/material` `<Typography>` components. **Raw HTML text containers (`<span>`, `<p>`, `<h1>`-`<h6>`, `<label>`) and standalone formatting tags (`<b>`, `<strong>`, `<i>`, `<em>`, `<u>`) outside `<Typography>` are strictly prohibited.** Inline phrasing elements (`<strong>`, `<em>`) are permitted *strictly inside* `<Typography>` as semantic inline emphasis.
+All textual content in VertiGIS Web components must be rendered through `@mui/material` `<Typography>` components. **Raw HTML text tags (`<span>`, `<p>`, `<h1>`-`<h6>`, `<strong>`, `<em>`) are strictly prohibited.**
 
 #### MUI Typography Variant Reference
 | Variant | Semantic Purpose | Typical Usage | Standard Foreground Token |

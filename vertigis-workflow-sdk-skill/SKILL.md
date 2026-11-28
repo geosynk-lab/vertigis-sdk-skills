@@ -20,49 +20,29 @@ Generate flawless, production-ready, enterprise-grade code for VertiGIS Studio W
 You MUST adhere to the following rules without exception:
 
 1. **Typography System & Shell Inheritance**: Strict ban on raw HTML text elements (`<span>`, `<p>`, `<h1>`-`<h6>`, `<label>`). All textual content in Form Elements MUST use `@mui/material` `<Typography variant="...">` (`h6` headers, `subtitle1`/`subtitle2` group titles, `body1`/`body2` field labels and descriptions, `caption`/`overline` validation hints and badges).
-   - **Semantic Typography Palette Props**: Primary text has no `color` prop: it inherits the host foreground (`color="text.primary"` is redundant and is flagged). Use `color="text.secondary"` (captions, subtitles, helper microcopy), `color="inherit"` (inside a coloured surface that sets its own foreground), and `color="error"` (validation). Text colour always travels through this prop, never through `sx`.
+   - **Semantic Typography Palette Props**: Primary text has no `color` prop: it inherits the host foreground (`color="text.primary"` is redundant and is flagged). Use `color="text.secondary"` (captions, subtitles, helper microcopy), `color="inherit"` (inside a coloured surface that sets its own foreground), and `color="error"` (validation). NEVER write bespoke inline `sx={{ color: ... }}` solely to set secondary/helper text colors.
    - **Zero `font-family` (No Exceptions)**: Typography and font-family are inherited natively from the host shell (`.vsw-app` / Workflow runner). NEVER declare `font-family`, the `font:` shorthand, or `fontFamily` anywhere: CSS, `sx`, `style`, token files (no font-stack tokens, including monospace/code stacks). The single allowed line is `typography: { fontFamily: "inherit" }` in the `createTheme` theme provider (or a chart library theme): MUI and chart libraries otherwise apply their own default font (Roboto / sans-serif) instead of the host font. Using `<Typography>` deletes boilerplate font-size and line-height declarations. Ensure minimum 14px text size (`body2`) for mobile and outdoor field readability.
    - **Top-Level Package Exports Only**: Always import directly from package roots (`import { Box, Typography } from "@mui/material"`; `import { createTheme, ThemeProvider } from "@mui/material/styles"`). Deep imports (e.g. `@mui/material/styles/createTheme`) are deprecated in MUI v7 and break under modern bundlers.
-2. **Host-Governed Styling (Zero Cosmetic `sx`)**: Six principles, enforced by `NO_COSMETIC_SX` (major), `STANDARDIZED_SPACING` (minor) and `NON_MUI_CONTAINMENT` (major):
-   1. **Host governs cosmetics.** The host (VertiGIS Studio Web / Mobile runtime) supplies the MUI theme and CSS custom properties (portal branding); form elements inherit surface, elevation, borders and typography.
-   2. **Zero cosmetic properties in component `sx`, `style`, `styles` dictionaries and `styled()`.** Cosmetic keys: `border*` (incl. side/width/style/colour variants), `outline*`, `borderRadius` (incl. corners), `background*`, `bgcolor`, `backdropFilter`, `boxShadow`, `textShadow`, `filter`, `color`, `textColor`, `textDecoration`, `textTransform`, `fontFamily`, `fontSize`, `fontWeight`, `lineHeight`, `letterSpacing`. They live ONLY in `src/tokens/muiTheme.ts` (`createTheme` `components.*.styleOverrides`, using `UI_TOKENS.*`) or are inherited; files under `src/tokens/` are exempt. Text uses `<Typography variant>` + the `color` prop. Standard controls (`TextField`, `Select`, pickers, `Button`) take error/disabled/focus colours from the theme via `error`, `disabled={!enabled}` and `helperText`.
-   3. **Canonical layout, gap over margin.** 1D: `<Stack direction spacing alignItems justifyContent>`. 2D: `<Box sx={{ display: "flex", flexDirection, gap, alignItems }}>` or `<Grid container spacing>`. Space siblings with the parent's `gap` / `Stack spacing`, never sibling margins. Layout `sx` keys: `display`, `flex*`, `align*`, `justify*`, `grid*`, spacing keys, `width`/`height`/`min*`/`max*`, `position`/`top`/`bottom`/`left`/`right`/`zIndex`, `overflow*`, `textOverflow`, `whiteSpace`, `wordBreak`.
-      - **Margin Leakage Anti-Pattern (Enforced by `MARGIN_LEAKAGE`)**: Never put external margins on `<Stack>` (`m`, `mt`, `mb`, `my`, `mx`, `ml`, `mr`) or vertical margins on `<Divider>` inside a Stack. External spacing belongs to the parent container (`<Stack spacing={1.5}>`), never as child margin. Inside a Stack, dividers should rely on stack spacing (or `<Divider flexItem />`), not custom `my` that fights the flex gap.
-   4. **8px grid spacing & semantic spacing tokens.** `p*`, `m*`, `gap`, `rowGap`, `columnGap` and Stack/Grid `spacing` take one of `0, 0.5, 1, 1.5, 2, 2.5, 3, 4` (negatives, `"auto"` and responsive objects allowed). Keep the default MUI spacing function in `createTheme`.
-      - **Spacing Token Pillar (Enforced by `SPACING_TOKENS_DECLARED`)**: Projects declare `src/tokens/spacing.ts` exporting canonical `SPACING` tokens with base scale multipliers and semantic roles:
-        - `SPACING.inlineGap` (`0.5` / 4px): Icon-to-label, badge inner padding, chip gaps
-        - `SPACING.controlGap` (`1` / 8px): Checkboxes, switches, radio groups, list items
-        - `SPACING.fieldGap` (`1.5` / 12px): Form field gutters, compact card padding, filter rows
-        - `SPACING.sectionGap` (`2` / 16px): Card content, dialog bodies, panel padding
-        - `SPACING.cardPadding` (`1.5` / 12px): Standard inner padding for cards
-        - `SPACING.panelPadding` (`2` / 16px): Standard inner padding for drawers/panels
-   5. **Declarative state via data attributes.** Render `<Card data-status={status}>`; the `&[data-status="..."]` styles live in `src/tokens/muiTheme.ts`.
-   6. **Containment.** `<canvas>` (signature pads), `<img>` (QR codes) and `<iframe>` (captcha) have `Paper`, `Card`, `CardContent`, `CardMedia` or `CardActionArea` as their nearest JSX parent, typically `<Paper variant="outlined">`; the element itself keeps functional sizing only (`style={{ width: "100%" }}`).
-   - **Zero Hardcoded Colours & Safe Fallbacks**: No hex (`#ffffff`), RGB or HSL colours for UI chrome. ALWAYS provide safe fallbacks for CSS variable tokens (e.g. `var(--primaryBackground, #ffffff)`). Group tokens and the theme under `src/tokens/` (`ui.ts`, `typography.ts`, `spacing.ts`, `index.ts`, `muiTheme.ts`, `VertiGisThemeProvider.tsx`).
-   - **Inheritance-First & MuiFormControlLabel Baseline**: Standard MUI controls (e.g., `DatePicker`, `TimePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Radio`, `Switch`, `Tabs`) inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) from the host theme via `VertiGisThemeProvider` / `createVertiGisTheme`. Configure `MuiFormControlLabel` in `src/tokens/muiTheme.ts` to reset default `-11px` negative margins (`marginLeft: 0, marginRight: 0`), ensuring consistent label alignment without ad-hoc `sx` overrides. Component-wide defaults go into `styleOverrides` in `src/tokens/muiTheme.ts`.
+2. **Two-Tier Styling Architecture (Pure Theme Inheritance & Zero Color Injection)**: Strict ban on hardcoded hex (`#ffffff`, `#1976d2`), RGB, or HSL colors for UI chrome, backgrounds, text, and borders. ALWAYS provide safe fallbacks for CSS variable tokens (e.g. `var(--primaryBackground, #ffffff)`). Group tokens under a dedicated `tokens/` directory (`ui.ts`, `typography.ts`, `index.ts`).
+   - **Inheritance-First / Zero Color Injection Rule**: Standard MUI controls (e.g., `DatePicker`, `TimePicker`, `TextField`, `Select`, `Button`, `Checkbox`, `Radio`, `Switch`, `Tabs`) MUST inherit their colors, borders, typography, and interactive states (`:hover`, `:focus-visible`, `:disabled`, `:selected`) natively from the host theme via `VertiGisThemeProvider` / `createVertiGisWorkflowMuiTheme`. Strictly prohibit micro-injecting inline color overrides (`sx={{ color, bgcolor, borderColor }}`) onto standard form inputs, pickers, or buttons.
    - **Inherit, Don't Restate (Minimal CSS Injection)**: Form elements render inside the host panel, which already supplies text colour, background and font. NEVER restate them: no `color: var(--primaryForeground)`, no `background: var(--primaryBackground)` (a transparent element already shows the panel), no `<Typography color="text.primary">`, and no wrapper element whose only job is to set colours for its children. Set a colour token ONLY where the element deliberately differs from its parent (status banner, accent badge, nested card). Exceptions: opaque layers that cover other content (`position: sticky|fixed|absolute` or `z-index`), the `createTheme` provider, and content rendered outside the shell (portals), which must carry a `vertigis-rule-disable REDUNDANT_INHERITED_TOKEN -- <reason>` comment.
-   - **Token Pairing & Contrast (Validated)**: When a theme override sets a background, it MUST set the foreground from the same pair in the same style object: `XBackground` with `XForeground` (e.g. `--alertRedBackground` with `--alertRedForeground`), accent fills (`--primaryAccent`) with `--emphasizedButtonForeground`. Text on panel surfaces (`--primaryBackground`, `--secondaryBackground`, `--primaryAccentLight`, item hover/selected) uses only `--primaryForeground` (inherited), `--secondaryForeground`, `--primaryAccent`, `--errorHelperTextForeground` or a disabled token. NEVER use a `*Foreground` token as a background or a `*Background` token as text (the inverse pair `--primaryForeground` / `--primaryBackground` is the only exception). Text must reach WCAG AA 4.5:1 against its background, computed from the `tokens/ui.ts` fallbacks (disabled text exempt). The validator enforces `REDUNDANT_INHERITED_TOKEN`, `TOKEN_PAIRING` and `TOKEN_CONTRAST`.
+   - **Token Pairing & Contrast (Validated)**: When an element sets a background, it MUST set the foreground from the same pair in the same rule or `sx` object: `XBackground` with `XForeground` (e.g. `--alertRedBackground` with `--alertRedForeground`), accent fills (`--primaryAccent`) with `--emphasizedButtonForeground`. Text on panel surfaces (`--primaryBackground`, `--secondaryBackground`, `--primaryAccentLight`, item hover/selected) uses only `--primaryForeground` (inherited), `--secondaryForeground`, `--primaryAccent`, `--errorHelperTextForeground` or a disabled token. NEVER use a `*Foreground` token as a background or a `*Background` token as text (the inverse pair `--primaryForeground` / `--primaryBackground` is the only exception). Text must reach WCAG AA 4.5:1 against its background, computed from the `tokens/ui.ts` fallbacks (disabled text exempt). The validator enforces `REDUNDANT_INHERITED_TOKEN`, `TOKEN_PAIRING` and `TOKEN_CONTRAST`.
    - **Strict Ban on `<CssBaseline />`**: NEVER mount `<CssBaseline />` under `VertiGisThemeProvider` or anywhere in form elements. Custom form elements execute as guest widgets inside the host shell (`.vsw-app` or Mobile container). `<CssBaseline />` injects global CSS resets (`html`, `body`, scrollbars, box-sizing) that clobber the host application shell, corrupt mobile viewport scaling, and break Esri map layouts.
    - **MUI v7 `slotProps` Standardization**: Standardize on `slotProps` for composite controls. Legacy nested props (`PaperProps`, `inputProps`, `InputProps`, `BackdropProps`) are deprecated. For example, use `<TextField slotProps={{ input: { readOnly } }}>` and `<Dialog slotProps={{ paper: { className: "..." } }}>`. In modals, use `onClose` instead of deprecated `onBackdropClick`.
+   - **Type-Safe Style Dictionaries (`Record<string, SxProps<Theme>>`)**: When custom MUI styles are genuinely necessary beyond theme defaults, do not scatter verbose inline `sx={{ ... }}` objects across markup. Define type-safe dictionaries at the top of the file: `const styles: Record<string, SxProps<Theme>> = { ... }` (or `ComponentName.styles.ts` for files >= 100 lines).
    - **Canonical Token Fallbacks**: Every `var(--token, #fallback)` MUST use the same fallback as the element's `tokens/ui.ts`. Colour literals may appear only in `tokens/` and in the fallback slot of `var(--token, <fallback>)`.
-   - **Crash Prevention**: NEVER pass raw `var(...)` strings (including any `UI_TOKENS.*` value) into `palette.primary.main` or `palette.error.main` (causes MUI `augmentColor()` to crash with `MUI: Unsupported var(...) color`). Attach CSS variables via component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } } }`). The same error is thrown when a token is passed to MUI colour math (`alpha()`, `darken()`, `lighten()`, `emphasize()`, `getContrastRatio()`, `theme.palette.augmentColor()`) or to the `color` prop of `<Link>`. Use `color-mix(in srgb, ...)` instead of `alpha()`, and a `MuiLink` `styleOverrides` entry in `src/tokens/muiTheme.ts` for link colour.
-   - **Shape Tokens & Border Radius**: Corner radii appear only in `src/tokens/muiTheme.ts` and reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
+   - **Crash Prevention**: NEVER pass raw `var(...)` strings into `palette.primary.main` or `palette.error.main` (causes MUI `augmentColor()` to crash). Attach CSS variables via component `styleOverrides` (e.g. `MuiRadio: { styleOverrides: { root: { "&.Mui-checked": { color: "var(--primaryAccent, #007ac2)" } } } }`).
+   - **Shape Tokens & Border Radius**: NEVER hardcode pixel corner radii (e.g. `4px`). Always reference unified shape tokens: `var(--borderRadius, 4px)` (standard), `var(--borderRadiusSm, 2px)` (micro), `var(--borderRadiusLarge, 8px)` / `var(--borderRadiusLg, 8px)` (cards/dialogs), and `50%` / `9999px` (pills/rounds).
    - **Spacing Tokens (Validated)**: In any CSS file, NEVER write literal lengths for `margin*`, `padding*` or `gap` (e.g. `padding: 12px;`). Use spacing tokens with fallbacks: `var(--spacingXxs, 2px)`, `var(--spacingXs, 4px)`, `var(--spacingSm, 8px)`, `var(--spacingMd, 12px)`, `var(--spacingLg, 16px)`, `var(--spacingXl, 24px)`. Only `0`, `auto` and keywords may be written literally. The validator enforces `HARDCODED_SPACING`.
-   - **Where Tokens Are Consumed**: `var(--...)` / `UI_TOKENS.*` colour values are consumed in `src/tokens/muiTheme.ts` (including derived tints via `color-mix(in srgb, ...)` and `&[data-status]` variants) and in non-CSS contexts (Plotly, canvas renderers, signature pad strokes, barcode viewfinders, PDF exports, SVG vector paths). Geometry tokens (`tokens.ui.touch.minHeight`) may appear in component `sx`.
+   - **Strict Exception Criteria (When Token Injection is Allowed)**: Direct token injection (`var(--...)` or `UI_TOKENS.*`) is permitted ONLY for: (1) Custom alert/status banners outside standard MUI palettes (e.g., `var(--alertAmberBackground)`), (2) Derived dynamic tints and overlays using `color-mix(in srgb, ...)`, (3) Structural container dividers (`1px solid var(--primaryBorder)`), and (4) Non-CSS contexts (Plotly, Canvas renderers, signature pads, barcode viewfinders, PDF exports, SVG vector paths).
    - **Mobile & Multi-Host Theming**: For dynamic surfaces and tints, use `color-mix(in srgb, ...)`. For non-CSS contexts, utilize the canonical `useIsDarkTheme()` hook or `isDarkTheme()` utility. For mobile form elements, enforce minimum 44x44px touch targets. Ensure WCAG AA contrast (4.5:1 text, 3:1 graphical elements) across light and dark host themes.
-3. **No Custom CSS / CSS Modules**: NEVER generate `*.css` or `*.module.css` files in Workflow form elements. Form elements run across Web and Mobile runtimes; cosmetics come from `VertiGisThemeProvider` (`src/tokens/muiTheme.ts`), and component `sx` carries layout only.
+3. **No Custom CSS / CSS Modules**: NEVER generate `*.css` or `*.module.css` files in Workflow form elements. Form elements run across Web and Mobile runtimes; styling is driven by `VertiGisThemeProvider` and token-backed MUI `sx` dictionaries. Standard MUI form inputs must never have redundant inline style overrides.
 4. **Strict Component Modularity & Anti-God-Component Architecture**: Strive for under **150 lines** per file with a **hard ceiling of 250 lines**. Any file exceeding 250 lines MUST be refactored and decomposed into `components/` (stateless presentation), `hooks/` (state/logic/subscriptions), `tokens/` (design tokens & theme bridges), and `utils/` (pure helpers/types). Wrap form elements in `<FormElementErrorBoundary>`. Any file containing JSX MUST use the `.tsx` extension; JSX in a `.ts` file is banned (`JSX_IN_TS`).
 5. **Wire Standard Props & State Persistence**: You MUST destructure and wire `enabled`, `visible`, and `readOnly` to the underlying MUI components (e.g., `disabled={!enabled}`, `slotProps={{ input: { readOnly } }}`). Critical workflow state MUST be saved via `props.setValue()` or `props.setProperty()`, NEVER ephemeral local `useState` (which is lost when switching form tabs).
 6. **Activity Dropdown Inputs**: For workflow activity inputs to appear as dropdowns in the designer, the union type must be defined INLINE (e.g., `inputType: 'a' | 'b' | string;`). Never extract it to an external type alias.
 7. **Enterprise Reliability**: Wrap Workflow Activity `execute` blocks in `try/catch` and throw structured errors to the workflow runtime. Add `aria-label` and `onKeyDown` to interactive MUI components in Form Elements to ensure WCAG accessibility.
 8. **ArcGIS Import Rules**: Use default imports for class modules (`import Graphic from "@arcgis/core/Graphic"`). Use star imports for utility/function modules to avoid AMD errors (`import * as projection from "@arcgis/core/geometry/projection"`). Use ambient `__esri.*` types.
-9. **Verification & Rule Validator Gate**: After every code edit, run all of these and report each exit code. A passing build and lint is NOT a passing gate. Skip a step only when its script does not exist in `package.json`, and say so:
-   1. `tsc --noEmit` (clean types).
-   2. `npm run lint` (zero errors).
-   3. `npm test` (all tests pass).
-   4. `npm run build` (clean compilation).
-   5. `python3 <skill-dir>/scripts/validate_workflow_sdk.py --path <project>`, where `<skill-dir>` is this skill's installed folder (e.g. `~/.agents/skills/vertigis-workflow-sdk-skill`); it MUST exit 0 (zero Critical violations; `--strict` also fails on Major). Supports `--format ansi|json|markdown`, `--output <file>` and `--self-test`. A rule may be suppressed only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`.
-   6. `npm run verify:styles` (= `python3 scripts/verify_zero_cosmetic_sx.py`, shipped in generated projects; otherwise `python3 <skill-dir>/scripts/verify_zero_cosmetic_sx.py <project>`) MUST exit 0. It is the standalone, stdlib-only implementation of `NO_COSMETIC_SX`, `STANDARDIZED_SPACING` and `NON_MUI_CONTAINMENT`, the same code the validator imports.
+9. **Rule Validator Gate**: After every code edit, run `python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path <project>`; it MUST exit 0 (zero Critical violations; `--strict` also fails on Major). Supports `--format ansi|json|markdown`, `--output <file>` and `--self-test`. A rule may be suppressed only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`.
 
 ## 4. Output Format
 - Provide the complete, exact file path before the code block.
@@ -104,7 +84,6 @@ When the user triggers this skill or enters `initiate`:
 ```text
 src/
 ├── index.ts                          ← Barrel export: exports ALL activities + elements
-├── tokens/                           ← Shared theme: muiTheme.ts (only home for cosmetics), VertiGisThemeProvider.tsx, ui.ts, typography.ts, index.ts
 ├── activities/
 │   └── <ActivityName>/
 │       ├── main.ts                   ← ONLY class + I/O interfaces + JSDoc tags (max 150 lines)
@@ -206,9 +185,8 @@ export default class MyActivity implements IActivityHandler {
 ```tsx
 import * as React from "react";
 import { FormElementProps, FormElementRegistration } from "@vertigis/workflow";
-import { Paper, Stack, TextField, Typography } from "@mui/material";
-import { tokens } from "../../tokens";
-import { VertiGisThemeProvider } from "../../tokens/VertiGisThemeProvider";
+import { Box, TextField, Typography } from "@mui/material";
+import { tokens } from "./tokens";
 import { FormElementErrorBoundary } from "./components/FormElementErrorBoundary";
 
 export interface MyElementProps extends FormElementProps<string> {
@@ -234,41 +212,62 @@ function MyElementView(props: MyElementProps): React.ReactElement | null {
     setProperty("secondaryStatus", newVal.length >= 6 ? "Valid" : "Too short");
   };
 
-  const tooShort = (value ?? "").length > 0 && (value ?? "").length < 6;
-
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
-      <Stack spacing={1.5}>
-        <Stack spacing={0.5}>
-          <Typography variant="subtitle1">Custom Inspection Field</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Enter the field inspection value. Changes persist across workflow form tabs.
-          </Typography>
-        </Stack>
+    <Box
+      sx={{
+        p: 2,
+        backgroundColor: tokens.ui.surface.secondary,
+        border: `1px solid ${tokens.ui.border.primary}`,
+        borderRadius: tokens.ui.shape.borderRadius,
+        boxShadow: tokens.ui.shape.shadowPrimary,
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.5,
+      }}
+    >
+      <Box>
+        <Typography variant="subtitle1">
+          Custom Inspection Field
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Enter the field inspection value. Changes persist across workflow form tabs.
+        </Typography>
+      </Box>
 
-        <TextField
-          fullWidth
-          placeholder={customPlaceholder}
-          value={value ?? ""}
-          disabled={!enabled}
-          error={tooShort}
-          helperText="Required minimum 6 characters for valid status."
-          slotProps={{ htmlInput: { readOnly, "aria-label": "Custom Input Field" } }}
-          onChange={(e) => handleChange(e.currentTarget.value)}
-          sx={{ "& .MuiInputBase-root": { minHeight: tokens.ui.touch.minHeight } }} // 44px touch target
-        />
-      </Stack>
-    </Paper>
+      <TextField
+        fullWidth
+        variant="outlined"
+        placeholder={customPlaceholder}
+        value={value ?? ""}
+        disabled={!enabled}
+        helperText="Required minimum 6 characters for valid status."
+        slotProps={{
+          input: { readOnly },
+          htmlInput: {
+            "aria-label": "Custom Input Field",
+            style: { minHeight: "24px" },
+          },
+        }}
+        onChange={(e) => handleChange(e.currentTarget.value)}
+        sx={{
+          borderRadius: tokens.ui.shape.borderRadius,
+          "& .MuiInputBase-root": {
+            minHeight: tokens.ui.touch.minHeight, // Mobile 44x44px touch target compliance
+          },
+          "& .MuiInputBase-input": {
+            fontSize: tokens.typography.fontSize.body2, // Mobile outdoor readability (14px)
+          },
+        }}
+      />
+    </Box>
   );
 }
 
 export function MyElement(props: MyElementProps): React.ReactElement {
   return (
-    <VertiGisThemeProvider>
-      <FormElementErrorBoundary>
-        <MyElementView {...props} />
-      </FormElementErrorBoundary>
-    </VertiGisThemeProvider>
+    <FormElementErrorBoundary>
+      <MyElementView {...props} />
+    </FormElementErrorBoundary>
   );
 }
 
@@ -286,12 +285,4 @@ const MyElementRegistration: FormElementRegistration<MyElementProps> = {
 };
 
 export default MyElementRegistration;
-```
-
-**Containment for non-MUI elements** (`NON_MUI_CONTAINMENT`): a `<canvas>` (signature pad), `<img>` (QR code) or `<iframe>` (captcha) sits directly inside `<Paper variant="outlined">` or a `Card`, which supplies border, surface, radius and dark mode; the element keeps functional sizing only:
-
-```tsx fragment
-<Paper variant="outlined">
-  <canvas ref={canvasRef} style={{ width: "100%", height: 160 }} aria-label="Signature pad" />
-</Paper>
 ```

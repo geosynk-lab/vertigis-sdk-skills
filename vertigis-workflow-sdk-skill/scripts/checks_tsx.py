@@ -4,26 +4,28 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-import verify_zero_cosmetic_sx as zero_cosmetic
 from engine import (TOKEN_VAR, COLOR_LITERAL, Context, color_literal, in_tokens_dir, matching_close,
                     normalize_hex, split_top_level, string_literals)
 
 RULE_IDS = {
-    "NO_CSS_BASELINE", "RAW_HTML_TEXT", "MIXED_CLASS_AND_STYLE", "LEGACY_SLOT_PROPS", "MISSING_A11Y",
+    "NO_CSS_BASELINE", "RAW_HTML_TEXT", "TYPOGRAPHY_COLOR_OVERRIDE", "SX_COLOR_ON_CONTROL", "INLINE_SX",
+    "INLINE_STATIC_STYLE", "MIXED_CLASS_AND_STYLE", "LEGACY_SLOT_PROPS", "MISSING_A11Y",
     "DIALOG_GLOBAL_OVERRIDE", "HARDCODED_COLOR", "INLINE_TOKEN_LITERAL", "TOKEN_FALLBACK_DRIFT",
     "FONT_FAMILY", "HARDCODED_RADIUS", "PALETTE_CSS_VAR", "THEME_HARDCODED_PALETTE", "THEME_DYNAMIC_HOOK",
-    "DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "ARCGIS_IMPORT_STYLE", "REDUNDANT_DECLARATION",
-    "DISABLED_TOOLTIP_WRAPPER", "UNSCOPED_THEME_OVERRIDE",
-} | set(zero_cosmetic.RULES)
+    "DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "ARCGIS_IMPORT_STYLE", "TYPOGRAPHY_SX_OVERRIDE",
+    "REDUNDANT_DECLARATION", "INLINE_SX_LAYOUT",
+}
 
+CONTROLS = {"Button", "TextField", "Select", "Radio", "Checkbox", "Switch", "DatePicker", "TimePicker", "Tabs"}
 RAW_TEXT_TAGS = {"p", "span", "label", "h1", "h2", "h3", "h4", "h5", "h6"}
-PHRASING_TAGS = {"b", "strong", "i", "em", "u"}
-MARGIN_PROPS = {"m", "mx", "my", "mt", "mb", "ml", "mr", "margin", "marginTop", "marginBottom", "marginLeft", "marginRight", "marginX", "marginY"}
 CLICKABLE_TAGS = {"div", "span", "Box", "Stack", "Paper", "Card"}
 LEGACY_PROPS = re.compile(r"(?<![\w-])(InputProps|inputProps|PaperProps|BackdropProps|onBackdropClick)\s*=")
+CONTROL_COLOR = re.compile(r"(?<![\w-])[\"']?(color|bgcolor|backgroundColor|borderColor)[\"']?\s*:")
 STATIC_VALUE = re.compile(r"^([\"'][^\"'$]*[\"']|`[^`$]*`|-?\d+(\.\d+)?|true|false|[A-Z_]+_TOKENS(\.\w+)+)$")
 TAG_START = re.compile(r"<([A-Za-z][\w.]*)")
 CLOSE_TAG = re.compile(r"</([A-Za-z][\w.]*)\s*>")
+LAYOUT_TAGS = {"Box", "Stack", "Grid", "Container", "div", "span", "img"}
+TYPE_PROPS = ("fontSize", "fontWeight", "lineHeight", "letterSpacing")
 FLEX_DISPLAY = {"flex", "inline-flex", "grid", "inline-grid"}
 
 
@@ -98,6 +100,10 @@ def jsx_tags(code: str):
         yield Tag(m.group(1), i, j, attrs, blank_braces(attrs), code[j - 1] == "/")
 
 
+def object_keys(inner: str) -> list[str]:
+    return [p.split(":", 1)[0].strip().strip("\"'") for p in split_top_level(inner) if ":" in p]
+
+
 def inline_object(tag: Tag, name: str) -> str | None:
     expr = tag.value(name)
     if expr is None:
@@ -131,6 +137,11 @@ def plain(value: str) -> str:
     return value[:-2] if re.fullmatch(r"-?[\d.]+px", value) else value
 
 
+def negligible_spacing(value: str) -> bool:
+    m = re.fullmatch(r"(-?\d*\.?\d+)(em|rem|px)?", plain(value))
+    return bool(m) and abs(float(m.group(1))) <= (0.5 if m.group(2) in (None, "px") else 0.02)
+
+
 def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
     add = lambda rule, detail="": ctx.add(rule, src, tag.start, detail or f"<{tag.name}>")
     if tag.name == "CssBaseline":
@@ -140,12 +151,29 @@ def check_tag(ctx: Context, src, tag: Tag, decl: dict) -> None:
         child = rest[:rest.find("<")] if "<" in rest else rest
         if child.strip():
             add("RAW_HTML_TEXT")
+    sx = tag.value("sx")
+    sx_inline = sx is not None and sx.strip()[:1] in ("{", "[")
+    if sx_inline:
+        add("INLINE_SX_LAYOUT" if tag.name in LAYOUT_TAGS else "INLINE_SX")
+    type_props = [p for p in TYPE_PROPS if p in decl]
+    if tag.name == "Typography" and type_props:
+        add("TYPOGRAPHY_SX_OVERRIDE", f"<Typography> {', '.join(type_props)}")
+    elif "letterSpacing" in decl and negligible_spacing(decl["letterSpacing"]):
+        add("REDUNDANT_DECLARATION", f"<{tag.name}> letterSpacing: {decl['letterSpacing']} is imperceptible")
     if "minHeight" in decl and plain(decl.get("height", "")) == plain(decl["minHeight"]):
         add("REDUNDANT_DECLARATION", f"<{tag.name}> minHeight equals height")
-    style_obj = inline_object(tag, "style")
-    if style_obj is not None and tag.has("className") and any(
-            ":" in p and STATIC_VALUE.match(p.split(":", 1)[1].strip()) for p in split_top_level(style_obj)):
-        add("MIXED_CLASS_AND_STYLE")
+    sx_obj, style_obj = inline_object(tag, "sx"), inline_object(tag, "style")
+    if tag.name == "Typography" and any(o and "color" in object_keys(o) for o in (sx_obj, style_obj)):
+        add("TYPOGRAPHY_COLOR_OVERRIDE")
+    if tag.name in CONTROLS and sx_inline and CONTROL_COLOR.search(sx):
+        add("SX_COLOR_ON_CONTROL")
+    if style_obj is not None:
+        static = [p.split(":", 1)[0].strip() for p in split_top_level(style_obj)
+                  if ":" in p and STATIC_VALUE.match(p.split(":", 1)[1].strip())]
+        if static:
+            add("INLINE_STATIC_STYLE", f"<{tag.name}> {', '.join(static)}")
+            if tag.has("className"):
+                add("MIXED_CLASS_AND_STYLE")
     for m in LEGACY_PROPS.finditer(tag.top):
         add("LEGACY_SLOT_PROPS", f"<{tag.name}> {m.group(1)}")
     if tag.name == "IconButton" and not tag.has("aria-label"):
@@ -172,24 +200,10 @@ def check_nesting(ctx: Context, src, tags: list) -> None:
         tag, decl = item
         if stack:
             parent = stack[-1][1]
-            parent_tag = stack[-1][0]
-            if parent_tag.name == "Tooltip" and tag.name in ("Button", "IconButton") and tag.has("disabled"):
-                ctx.add("DISABLED_TOOLTIP_WRAPPER", src, tag.start, f"<{tag.name} disabled> directly inside <Tooltip>; wrap in <span> or <Box component=\"span\"> so pointer events fire")
             if plain(parent.get("display", "")) in FLEX_DISPLAY and plain(decl.get("display", "")) == "block":
                 ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> display: block inside a flex/grid parent")
-            if parent_tag.name == "Stack" and tag.name == "Divider":
-                if any(k in decl or tag.has(k) for k in ("my", "mt", "mb", "margin", "marginTop", "marginBottom", "marginY")):
-                    ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Divider> inside <Stack> has vertical margin; parent Stack spacing manages separation")
-        if tag.name == "Stack":
-            if any(k in decl or tag.has(k) for k in MARGIN_PROPS):
-                ctx.add("MARGIN_LEAKAGE", src, tag.start, "<Stack> declares external margin; manage spacing on the parent container")
-        if tag.name in PHRASING_TAGS and not tag.self_closing:
-            ancestors = [t.name for t, _ in stack]
-            if "Typography" not in ancestors:
-                rest = src.code[tag.end + 1:]
-                child = rest[:rest.find("<")] if "<" in rest else rest
-                if child.strip():
-                    ctx.add("RAW_HTML_TEXT", src, tag.start, f"<{tag.name}> outside <Typography>; use <Typography variant=\"...\"> or wrap inline phrasing inside <Typography>")
+            if "color" in decl and plain(decl["color"]) == plain(parent.get("color", "")):
+                ctx.add("REDUNDANT_DECLARATION", src, tag.start, f"<{tag.name}> color repeats the parent colour")
         if not tag.self_closing:
             stack.append((tag, decl))
 
@@ -237,10 +251,6 @@ def check_properties(ctx: Context, src) -> None:
     for index, block in block_after(code, r"\bMuiTypography\s*:\s*\{"):
         if re.search(r"(?<![\w-])color\s*:", block):
             ctx.add("THEME_HARDCODED_PALETTE", src, index, "MuiTypography color override blocks color= props")
-    for comp in ("MuiCard", "MuiTableCell", "MuiPaper"):
-        for index, block in block_after(code, rf"\b{comp}\s*:\s*\{{"):
-            for m in re.finditer(r"[\"']?(&\[data-status=[^\]]+\])[\"']?\s*:", block):
-                ctx.add("UNSCOPED_THEME_OVERRIDE", src, index, f"{comp} overrides unscoped state selector: {m.group(1)}; prefix with component class (e.g. &.MyComponent-root[data-status=...])")
     if renderer and not re.search(r"\b(useIsDarkTheme|useDarkTheme|isDarkTheme|isDark)\b", code):
         ctx.add("THEME_DYNAMIC_HOOK", src, renderer.start(), renderer.group(0))
 
@@ -274,9 +284,6 @@ def check_tsx(ctx: Context) -> None:
             continue
         check_strings(ctx, src)
         check_properties(ctx, src)
-        if not in_tokens_dir(src.rel):
-            for rule, index, detail in zero_cosmetic.check_source(src.code, src.rel):
-                ctx.add(rule, src, index, detail)
         if src.kind == "tsx":
             tags = [(tag, style_declarations(src.code, tag)) for tag in jsx_tags(src.code)]
             for tag, decl in tags:

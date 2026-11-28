@@ -175,14 +175,20 @@ function StarRatingView(props: StarRatingProps): React.ReactElement | null {
               }}
               aria-label={`Rate ${starNumber} out of ${maxStars} stars`}
               aria-pressed={isActive}
-              color={isActive ? "primary" : "default"}
+              sx={{
+                color: isActive ? "var(--primaryAccent)" : "var(--primaryBorder)",
+                transition: "transform 0.1s ease",
+                "&:hover": {
+                  transform: enabled && !readOnly ? "scale(1.1)" : "none",
+                }
+              }}
             >
               ★
             </IconButton>
           );
         })}
       </Stack>
-      <Typography variant="body2" color="text.secondary" aria-live="polite">
+      <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }} aria-live="polite">
         {value ? `${value} / ${maxStars}` : "Unrated"}
       </Typography>
     </Stack>
