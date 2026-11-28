@@ -58,6 +58,7 @@ class Context:
     canonical: dict = field(default_factory=dict)
     violations: list = field(default_factory=list)
     single_file: bool = False
+    config: dict = field(default_factory=lambda: {"wrapperLibraries": [], "overrides": []})
 
     def add(self, rule: str, src: SourceFile, index: int, detail: str = "") -> None:
         self.violations.append(Violation(rule, src.rel, src.line_of(index), detail))
@@ -160,7 +161,8 @@ def split_top_level(text: str, sep: str = ",") -> list[str]:
 
 
 def in_tokens_dir(rel: str) -> bool:
-    return "/tokens/" in "/" + rel
+    """Token definitions: a tokens/ folder or a *.theme.ts file (where a component's look is defined)."""
+    return "/tokens/" in "/" + rel or rel.endswith(".theme.ts")
 
 
 VAR_CALL = re.compile(r"var\((?:[^()]|\([^()]*\))*\)")
@@ -255,10 +257,16 @@ def is_suppressed(v: Violation, suppressions: list[Suppression], used: set) -> b
     return False
 
 
-def run(root: Path, catalog_path: Path, checks: list) -> dict:
+def run(root: Path, catalog_path: Path, checks: list, baseline: Path | None = None,
+        update_baseline: bool = False) -> dict:
+    import project  # local import: project.py has no engine dependency, this keeps the cycle out
+
     sdk, catalog = load_catalog(catalog_path)
     files = collect_files(root)
     ctx = Context(sdk, catalog, files, canonical_fallbacks(files), single_file=Path(root).is_file())
+    ctx.config, problems = project.load_config(root, catalog)
+    for problem in problems:
+        ctx.add_line("INVALID_SUPPRESSION", project.CONFIG_NAME, 1, problem)
     suppressions = parse_suppressions(ctx)
     for check in checks:
         check(ctx)
@@ -274,6 +282,8 @@ def run(root: Path, catalog_path: Path, checks: list) -> dict:
             continue
         if not is_suppressed(v, suppressions, used):
             kept.append(v)
+    kept, baselined, fixed = project.finish(kept, ctx.config, {f.rel: f for f in files}, baseline,
+                                            update_baseline, UNSUPPRESSIBLE)
     kept.sort(key=lambda v: (SEVERITIES.index(severity_of(catalog[v.rule], sdk)), v.file, v.line))
     return {
         "sdk": sdk,
@@ -281,4 +291,7 @@ def run(root: Path, catalog_path: Path, checks: list) -> dict:
         "files": len(files),
         "violations": kept,
         "suppressions": [s for i, s in enumerate(suppressions) if i in used],
+        "overrides": ctx.config["overrides"],
+        "baselined": baselined,
+        "fixed": fixed,
     }
