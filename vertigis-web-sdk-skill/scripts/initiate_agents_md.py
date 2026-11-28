@@ -12,6 +12,8 @@ import re
 import sys
 from pathlib import Path
 
+import vsw_ui_mode
+
 START_MARKER = "<!-- vertigis-web-sdk:start -->"
 END_MARKER = "<!-- vertigis-web-sdk:end -->"
 
@@ -115,9 +117,21 @@ Never treat verification as a single end-of-task formality. Enforce the **6-Tier
 VERTIGIS_DIRECTIVES = f"{START_MARKER}\n{DIRECTIVES_BODY}\n{END_MARKER}"
 
 
-def initiate_agents_md(target_dir: Path, force: bool = False) -> None:
+def directives_for(target_dir: Path, ui: str = "auto") -> tuple[str, bool]:
+    """The directives block for this project; vsw-ui mode when it depends on @geosynk/vsw-ui (or ui="vsw-ui")."""
+    vsw = ui == "vsw-ui" or (ui == "auto" and vsw_ui_mode.uses_vsw_ui(target_dir))
+    body = vsw_ui_mode.tailor(DIRECTIVES_BODY) if vsw else DIRECTIVES_BODY
+    return f"{START_MARKER}\n{body}\n{END_MARKER}", vsw
+
+
+def initiate_agents_md(target_dir: Path, force: bool = False, ui: str = "auto") -> None:
     """Inject or update the VertiGIS Web SDK directives block in AGENTS.md."""
     target_dir.mkdir(parents=True, exist_ok=True)
+    VERTIGIS_DIRECTIVES, vsw = directives_for(target_dir, ui)
+    if vsw:
+        print("vsw-ui detected: UI rules come from @geosynk/vsw-ui.")
+        for note in vsw_ui_mode.configure_project(target_dir):
+            print(note)
     agents_file = target_dir / "AGENTS.md"
 
     if not agents_file.exists():
@@ -141,7 +155,7 @@ def initiate_agents_md(target_dir: Path, force: bool = False) -> None:
             )
             return
         # Replace existing block
-        updated_content = marker_pattern.sub(VERTIGIS_DIRECTIVES, content)
+        updated_content = marker_pattern.sub(lambda _m: VERTIGIS_DIRECTIVES, content)
         agents_file.write_text(updated_content, encoding="utf-8")
         print(f"Updated existing VertiGIS Studio Web SDK directives in {agents_file}.")
     else:
@@ -197,9 +211,16 @@ def main() -> None:
         help="Skip skill installation prompt",
     )
 
+    parser.add_argument(
+        "--ui",
+        choices=("auto", "vsw-ui", "generic"),
+        default="auto",
+        help="UI mode: auto detects @geosynk/vsw-ui in package.json (default)",
+    )
+
     args = parser.parse_args()
     target_path = Path(args.target_dir_opt or args.target_dir_pos or ".").resolve()
-    initiate_agents_md(target_path, force=args.force)
+    initiate_agents_md(target_path, force=args.force, ui=args.ui)
 
     # Prompt to install skill via npx skills add
     should_install = args.install_skill

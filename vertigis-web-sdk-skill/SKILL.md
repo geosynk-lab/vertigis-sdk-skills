@@ -17,6 +17,13 @@ You are an expert GIS Developer and Enterprise React Architect specializing in t
 ## 2. Objective
 Generate flawless, production-ready, enterprise-grade code for VertiGIS Studio Web (VSW) extensions. You build custom components (Models/Views), services, commands, and operations that perfectly align with VertiGIS SDK architecture, React best practices, and WCAG accessibility standards.
 
+## 2a. Projects That Use vsw-ui (check first)
+If the project's `package.json` depends on `@geosynk/vsw-ui`, its UI rules come from the installed package, not from this skill:
+- Read `node_modules/@geosynk/vsw-ui/COMPONENTS.md` before writing UI, and import every control from vsw-ui (`DataGrid` from `@geosynk/vsw-ui/data-grid`, never `@mui/x-data-grid`). If a component is missing, stop and ask or add it to vsw-ui.
+- Skip the token and theme guidance in this skill (Rules 1–3 below on typography, styling and component CSS, the token parts of [Design Tokens & Theming](./references/11_design_tokens_and_theming.md)): vsw-ui supplies the tokens and theme and checks them in its own CI. Its modularity standards still apply.
+- Everything else here still applies: LayoutElement, MobX models, lifecycle order, Designer settings, commands, dev OAuth isolation.
+- Gate: `@geosynk/vsw-ui/eslint` in `eslint.config.js` and `"profile": "vsw-ui"` in `.vertigis-rules.json` (`initiate` sets both up). The validator then turns off 13 token and theme rules and adds `UI_IMPORT` and `APP_COSMETIC_CSS`.
+
 ## 3. Rules (CRITICAL AGENT DIRECTIVES)
 You MUST adhere to the following rules without exception:
 
@@ -131,7 +138,7 @@ When the user triggers this skill or enters `initiate`:
 | **Workflow Web SDK** | [Workflow Web SDK](./references/07_workflow_web_sdk.md) | Custom workflow activities (`IActivityHandler`), custom form elements, ArcGIS JS API integration. |
 | **Deployment** | [Deployment & Best Practices](./references/08_deployment_and_best_practices.md) | `npm run build`, hosting on CDN/SaaS, ArcGIS Enterprise items, CORS, production OAuth isolation, Webpack 5 caching, Dockerized builds, and Designer packaging traps. |
 | **Tutorials & Recipes** | [Tutorials & Recipes](./references/09_tutorials_and_recipes.md) | Custom map click handling, configurable widgets, triggering workflows. |
-| **Design Tokens & Theming** | [Design Tokens & Theming](./references/11_design_tokens_and_theming.md) | Design token subsystem (`tokens/ui.ts`, `tokens/typography.ts`, `tokens/index.ts`), safe fallbacks (`var(--primaryBackground, #ffffff)`), dynamic dual-theming (`color-mix`), `useIsDarkTheme` hook, standalone `isDarkTheme()`, MUI `ThemeProvider`, anti-god-component modularity standards (150–250 lines ceiling, 7-directory blueprint, extraction heuristics). |
+| **Design Tokens & Theming** | [Design Tokens & Theming](./references/11_design_tokens_and_theming.md) | (vsw-ui projects: read only the modularity part; tokens and theme come from vsw-ui.) Design token subsystem (`tokens/ui.ts`, `tokens/typography.ts`, `tokens/index.ts`), safe fallbacks (`var(--primaryBackground, #ffffff)`), dynamic dual-theming (`color-mix`), `useIsDarkTheme` hook, standalone `isDarkTheme()`, MUI `ThemeProvider`, anti-god-component modularity standards (150–250 lines ceiling, 7-directory blueprint, extraction heuristics). |
 
 ---
 
