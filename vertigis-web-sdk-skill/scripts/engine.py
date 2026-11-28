@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-SKIP_DIRS = {"node_modules", "dist", "build", "coverage", ".git", ".tgrep", ".venv", "__pycache__"}
+SKIP_DIRS = {"node_modules", "dist", "build", "coverage", ".git", ".tgrep", ".venv", "__pycache__", ".agents"}
 SOURCE_EXT = (".ts", ".tsx", ".css")
 SEVERITIES = ("critical", "major", "minor")
 TEST_FILE_RULES = {"DEEP_MUI_IMPORT", "BANNED_WEB_UI_IMPORT", "INVALID_SUPPRESSION"}

@@ -1,0 +1,24 @@
+{
+  "name": "geosynk",
+  "version": "0.1.0",
+  "description": "Commands for projects made with the Geosynk VertiGIS skills (upgrade).",
+  "type": "module",
+  "bin": {
+    "geosynk": "bin/geosynk.mjs"
+  },
+  "files": [
+    "bin",
+    "vertigis-web-sdk-skill",
+    "vertigis-workflow-sdk-skill",
+    "!**/references/raw",
+    "!**/__pycache__",
+    "!**/.venv"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geosynk-lab/vertigis-sdk-skills.git"
+  }
+}

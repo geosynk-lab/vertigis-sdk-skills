@@ -204,6 +204,15 @@ Each rule has a severity: **critical**, **major** or **minor**.
 
 Minor violations are reported but never fail the run. Use the exit code as a gate in CI or after every agent edit.
 
+### Upgrading a project made with these skills
+Bring an existing project up to the latest skill, scripts and AGENTS.md rules (needs Node 18+ and Python 3.10+):
+```bash
+npx -y github:geosynk-lab/vertigis-sdk-skills vertigis-web upgrade --dry-run      # list what would change
+npx -y github:geosynk-lab/vertigis-sdk-skills vertigis-web upgrade                # apply
+npx -y github:geosynk-lab/vertigis-sdk-skills vertigis-workflow upgrade           # Workflow projects
+```
+It refreshes the project-local skill copy (`.agents/skills/`), the skill's block in AGENTS.md (your own text outside the markers is kept), `scripts/verify_zero_cosmetic_sx.py` and its npm script, and the vsw-ui validator profile when the project uses `@geosynk/vsw-ui`. It adds `npm run geosynk:upgrade` for next time, then runs the new validator and reports. It stops on uncommitted changes (`--allow-dirty` to override) so the upgrade is one reviewable diff, and a second run changes nothing.
+
 ### Suppressing a rule
 A rule can be suppressed only with a written reason:
 ```ts
