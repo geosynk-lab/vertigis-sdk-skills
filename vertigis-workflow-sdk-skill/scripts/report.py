@@ -27,6 +27,19 @@ def exit_code(result: dict, strict: bool) -> int:
     return 1 if c["critical"] or (strict and c["major"]) else 0
 
 
+def exemption_lines(result: dict) -> list[str]:
+    """Every override and the baseline are listed in each report, so no exemption is silent."""
+    out = [f"override off {','.join(sorted(o['off']))} in {', '.join(o['files'])}: hid {o['hidden']} -- {o['reason']}"
+           for o in result.get("overrides", [])]
+    out += [f"fixed (remove from baseline): {e['rule']} {e['file']}: {e['snippet']}" for e in result.get("fixed", [])]
+    return out
+
+
+def debt_summary(result: dict) -> str:
+    hidden = sum(o["hidden"] for o in result.get("overrides", []))
+    return f"overridden={hidden} baselined={len(result.get('baselined', []))} fixed={len(result.get('fixed', []))}"
+
+
 def _rows(result: dict):
     for v in result["violations"]:
         entry = result["catalog"][v.rule]
@@ -42,10 +55,11 @@ def render_ansi(result: dict, strict: bool) -> str:
         lines.append(f"    fix: {entry['remediation']}  {DIM}[{entry['skill_ref']}]{RESET}")
     for s in result["suppressions"]:
         lines.append(f"{DIM}suppressed {s.rule} at {s.file}:{s.line} ({s.scope}) -- {s.reason}{RESET}")
+    lines += [f"{DIM}{line}{RESET}" for line in exemption_lines(result)]
     c = counts(result)
     verdict = "FAIL" if exit_code(result, strict) else "PASS"
     lines.append(f"{BOLD}{verdict}{RESET}  {result['files']} files  critical={c['critical']} major={c['major']} "
-                 f"minor={c['minor']}  suppressed={len(result['suppressions'])}  score={score(result)} (informational)")
+                 f"minor={c['minor']}  suppressed={len(result['suppressions'])}  {debt_summary(result)}  score={score(result)} (informational)")
     return "\n".join(lines)
 
 
@@ -60,6 +74,9 @@ def render_json(result: dict, strict: bool) -> str:
                         "summary": e["summary"], "remediation": e["remediation"], "skill_ref": e["skill_ref"]}
                        for v, e, sev in _rows(result)],
         "suppressions": [s.__dict__ for s in result["suppressions"]],
+        "overrides": [{**o, "off": sorted(o["off"])} for o in result.get("overrides", [])],
+        "baselined": [v.__dict__ for v in result.get("baselined", [])],
+        "fixed": result.get("fixed", []),
     }, indent=2)
 
 
@@ -68,7 +85,7 @@ def render_markdown(result: dict, strict: bool) -> str:
     verdict = "FAIL" if exit_code(result, strict) else "PASS"
     out = [f"# VertiGIS {result['sdk']} SDK rule report: {verdict}", "",
            f"Files: {result['files']} | critical: {c['critical']} | major: {c['major']} | minor: {c['minor']} | "
-           f"suppressed: {len(result['suppressions'])} | score: {score(result)} (informational)", "",
+           f"suppressed: {len(result['suppressions'])} | {debt_summary(result)} | score: {score(result)} (informational)", "",
            "| Severity | Rule | Location | Detail | Fix |", "|---|---|---|---|---|"]
     esc = lambda t: str(t).replace("|", "\\|").replace("\n", " ")
     for v, e, sev in _rows(result):
@@ -76,6 +93,8 @@ def render_markdown(result: dict, strict: bool) -> str:
     if result["suppressions"]:
         out += ["", "## Suppressions", "", "| Rule | Location | Scope | Reason |", "|---|---|---|---|"]
         out += [f"| `{s.rule}` | `{s.file}:{s.line}` | {s.scope} | {esc(s.reason)} |" for s in result["suppressions"]]
+    if exemption_lines(result):
+        out += ["", "## Overrides and baseline", ""] + [f"- {esc(line)}" for line in exemption_lines(result)]
     return "\n".join(out) + "\n"
 
 

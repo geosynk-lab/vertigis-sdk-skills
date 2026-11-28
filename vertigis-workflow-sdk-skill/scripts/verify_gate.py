@@ -27,6 +27,7 @@ import checks_css
 import checks_tokens
 import checks_tsx
 from engine import collect_files, run, severity_of
+from project import BASELINE_NAME
 from report import counts, exit_code, score
 
 CHECKS = checks_tsx.CHECKS + checks_css.CHECKS + checks_tokens.CHECKS + checks_arch.CHECKS
@@ -115,7 +116,8 @@ def main(argv: list[str] | None = None) -> int:
         result = run(target_files[0], rules_path, CHECKS)
     else:
         root_dir = Path(args.path).resolve() if not args.git else Path.cwd().resolve()
-        result = run(root_dir, rules_path, CHECKS)
+        # Known debt in <root>/.vertigis-baseline.json does not fail the gate; new findings do.
+        result = run(root_dir, rules_path, CHECKS, root_dir / BASELINE_NAME)
 
     # 3. Group violations by file
     violations_by_file: dict[str, list] = {}

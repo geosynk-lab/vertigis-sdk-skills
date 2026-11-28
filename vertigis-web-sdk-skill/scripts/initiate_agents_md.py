@@ -115,7 +115,7 @@ Never treat verification as a single end-of-task formality. Enforce the **5-Tier
 2. **Unit & Contract Tests**: Test component logic AND Designer attribute persistence (asserting that empty strings delete XML attributes and kebab-case attributes map to camelCase). Keep the static styling audit (`src/utils/stylingAudit.test.ts`) passing; never raise its `BASELINE` ceilings or add `KNOWN_EXCEPTIONS` entries without a stated reason.
 3. **Dead Code & Hygiene Gate**: `knip` (zero unused exports, dead files, or orphan CSS).
 4. **Production Build**: `npm run build` or `pnpm run build` (clean compilation).
-5. **Rule Validator**: `python3 vertigis-web-sdk-skill/scripts/validate_web_sdk.py --path .` MUST exit 0. Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`.
+5. **Rule Validator**: `python3 vertigis-web-sdk-skill/scripts/validate_web_sdk.py --path .` MUST exit 0. Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`. Exempt a whole area only through `overrides` in `.vertigis-rules.json` (each with a `reason`). Existing debt lives in `.vertigis-baseline.json`; a new finding still fails, and the baseline only shrinks.
 - **2-Strike Halt Gate**: If a fix fails verification twice on the same step, STOP. Report what was tried, what failed, and ask for guidance.
 
 ## 8. Ponytail Code Minimization & Zero-Garbage Invariant

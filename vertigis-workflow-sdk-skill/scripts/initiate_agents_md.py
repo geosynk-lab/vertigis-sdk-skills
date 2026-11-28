@@ -78,7 +78,7 @@ DIRECTIVES_BODY = """# VertiGIS Studio Workflow SDK Development Directives
 - **Defensive Activities**: Workflow Activities MUST wrap core execution logic in `try/catch` blocks and throw structured `Error` objects so the workflow engine can handle failures gracefully.
 
 ## 6. Rule Validator Gate
-- After every code edit, `python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path .` MUST exit 0. Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`."""
+- After every code edit, `python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path .` MUST exit 0. Suppress a rule only with a written reason: `// vertigis-rule-disable RULE_ID -- <reason>`. Exempt a whole area only through `overrides` in `.vertigis-rules.json` (each with a `reason`; the report lists every override and how many findings it hid). Existing debt lives in `.vertigis-baseline.json` (`--update-baseline`); a new finding still fails, and fixed findings are reported for removal."""
 
 VERTIGIS_DIRECTIVES = f"{START_MARKER}\n{DIRECTIVES_BODY}\n{END_MARKER}"
 

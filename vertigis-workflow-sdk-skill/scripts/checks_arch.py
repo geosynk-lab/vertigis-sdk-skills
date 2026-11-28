@@ -77,8 +77,11 @@ def check_css_pair(ctx: Context) -> None:
             continue
         m = JSX_RETURN.search(without_strings(src.code))
         css = src.rel[:-len(".tsx")] + ".css"
-        if m and css not in present:
-            ctx.add("COMPONENT_CSS_PAIR", src, m.start(), f"missing {posixpath.basename(css)}")
+        folder = posixpath.dirname(src.rel)
+        # A component's look may live in <Name>.css, or in a *.theme.ts next to it (MUI styleOverrides).
+        themed = any(posixpath.dirname(f) == folder and f.endswith(".theme.ts") for f in present)
+        if m and css not in present and not themed:
+            ctx.add("COMPONENT_CSS_PAIR", src, m.start(), f"missing {posixpath.basename(css)} or a *.theme.ts")
 
 
 def method_body(code: str, name: str):
