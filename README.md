@@ -141,7 +141,8 @@ Teaches the AI how to build custom components, services, and commands for VertiG
 **Key Enforcements:**
 - **Typography System & Shell Inheritance**: Strict ban on raw HTML text elements (`<span>`, `<p>`, `<h1>`-`<h6>`). Enforces `@mui/material` `<Typography variant="...">` with semantic variants (`h5`/`h6` titles, `subtitle1`/`subtitle2` headers, `body1`/`body2` body text, `caption`/`overline` microcopy) and semantic foreground tokens. Deletes boilerplate CSS text classes and prohibits redundant `font-family: var(--defaultFont)` in component CSS by relying on host shell inheritance.
 - **Color & Design Tokens System**: Strict ban on hardcoded hex/RGB/HSL colors and hardcoded corner radii. Complete CSS token system for surfaces (`var(--primaryBackground)`), borders (`var(--primaryBorder)`), unified shapes (`var(--borderRadius, 4px)`, `var(--borderRadiusSm, 2px)`, `var(--borderRadiusLarge, 8px)`), foregrounds, accents, button controls, and status alerts. Enforces map-first neutral UI chrome and dark/light theme adaptability.
-- **Automated `initiate` Tooling**: Command and script (`scripts/initiate_agents_md.py`) to inject or update scoped `AGENTS.md` directives (`<!-- vertigis-web-sdk:start --> ... <!-- vertigis-web-sdk:end -->`) in target repositories without clobbering existing rules.
+- **Automated `initiate` Tooling**: Command and script (`scripts/initiate_agents_md.py`) to inject or update scoped `AGENTS.md` directives (`<!-- vertigis-web-sdk:start --> ... <!-- vertigis-web-sdk:end -->`) in target repositories without clobbering existing rules. It detects [`@geosynk/vsw-ui`](#-using-the-skills-with-vsw-ui) and then writes a short UI section that points at the installed package instead of the long styling rules.
+- **`upgrade` command**: brings a project made with an older version of the skill up to date (see [Upgrading a project](#upgrading-a-project-made-with-these-skills)).
 - **React Component Decomposition**: Clean separation into `hooks/`, `components/`, and `utils/` (no god components).
 - **MobX `observer()`**: Reactive re-rendering on model observables.
 - **`<LayoutElement>` Wrappers**: Layout slotting and Designer parameter integration.
@@ -177,7 +178,7 @@ Teaches the AI how to build custom activities and form elements in C# for VertiG
 
 ## ✅ Rule Validation
 
-The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (52 Web rules, 34 Workflow rules).
+The Web SDK and Workflow SDK skills include a validator that checks a project against the skill rules. It needs only Python 3 (standard library, no install). The rules are defined in each skill's `scripts/rules.json` (54 Web rules, 34 Workflow rules).
 
 ### Run the validator
 ```bash
@@ -195,6 +196,9 @@ python3 vertigis-workflow-sdk-skill/scripts/validate_workflow_sdk.py --path /pat
 | `--output <file>` | Write the report to a file instead of the terminal. |
 | `--strict` | Also fail on Major violations. |
 | `--rules <file>` | Use a different rule catalog (default: the sibling `rules.json`). |
+| `--baseline <file>` | Known-findings file (default: `<path>/.vertigis-baseline.json` when present). |
+| `--update-baseline` | Record the current findings as known debt, then report. |
+| `--no-baseline` | Ignore the baseline and report every finding as new. |
 | `--self-test` | Check the validator itself against its rule fixtures and the documentation examples. |
 
 ### Exit codes and severities
@@ -203,6 +207,24 @@ Each rule has a severity: **critical**, **major** or **minor**.
 - Exit `1`: at least one Critical violation (with `--strict`: Critical or Major).
 
 Minor violations are reported but never fail the run. Use the exit code as a gate in CI or after every agent edit.
+
+### Project settings: `.vertigis-rules.json`
+Optional, at the project root:
+```json
+{
+  "profile": "vsw-ui",
+  "wrapperLibraries": ["@acme/ui"],
+  "overrides": [
+    { "files": ["src/showcase/**"], "off": ["HARDCODED_COLOR"], "reason": "dev harness, never shipped" }
+  ]
+}
+```
+- `overrides` turn rules off for matching files. A `reason` is required, and every report lists each override with the number of findings it hid, so no exemption is silent.
+- `wrapperLibraries` names UI packages that wrap MUI controls, so their `IconButton label` counts as the accessible name (`MISSING_A11Y`).
+- `profile` applies a named set of settings for a project type; see [Using the skills with vsw-ui](#-using-the-skills-with-vsw-ui).
+
+### Known debt: `.vertigis-baseline.json`
+`--update-baseline` records today's findings. After that, recorded findings are reported as debt and do not fail the run; any new finding does. A finding is matched by rule, file and the trimmed source line (not the line number), so edits elsewhere in the file do not break the match. Findings that disappear are reported as fixed, so the baseline only shrinks.
 
 ### Upgrading a project made with these skills
 Bring an existing project up to the latest skill, scripts and AGENTS.md rules (needs Node 18+ and Python 3.10+):
@@ -222,13 +244,27 @@ A rule can be suppressed only with a written reason:
 The first form covers the next line; the `-file` form covers the whole file. A suppression without a reason, with `*`, or with an unknown rule ID is reported as `INVALID_SUPPRESSION` and cannot itself be suppressed.
 
 ### Zero-Cosmetic-SX check (standalone)
-`scripts/verify_zero_cosmetic_sx.py` (identical in both skills) implements `NO_COSMETIC_SX`, `STANDARDIZED_SPACING` and `NON_MUI_CONTAINMENT`. The validator imports the same file, so there is one source of truth. It can also run on its own:
+`scripts/verify_zero_cosmetic_sx.py` (identical in both skills) implements `NO_COSMETIC_SX`, `STANDARDIZED_SPACING`, `NON_MUI_CONTAINMENT` and `MARGIN_LEAKAGE`. The validator imports the same file, so there is one source of truth. It can also run on its own:
 ```bash
 python3 vertigis-web-sdk-skill/scripts/verify_zero_cosmetic_sx.py /path/to/project
 ```
 Projects generated from the SDK `template-custom` overlays ship a copy as `npm run verify:styles`. Exit `0` = clean, `1` = violations, `2` = bad path.
 
 ---
+
+## 🎨 Using the skills with vsw-ui
+`@geosynk/vsw-ui` (a separate, private package) is the shared UI package for VertiGIS Studio Web apps: components, tokens, theme and icons. The three pieces have one job each:
+
+| Piece | Owns |
+|---|---|
+| VertiGIS Web SDK | the platform: layout, models, commands, Designer |
+| vsw-ui | everything visual, plus the rules for using it (`COMPONENTS.md`, `contract/components.json`) |
+| Web SDK skill | SDK know-how, and pointing agents to vsw-ui |
+
+When a project depends on `@geosynk/vsw-ui`:
+- `initiate` (and `upgrade`) write a short UI section in AGENTS.md that points at `node_modules/@geosynk/vsw-ui/COMPONENTS.md`, so agents read the rules for the installed version, and create `.vertigis-rules.json` with `"profile": "vsw-ui"`.
+- vsw-ui's ESLint preset blocks the imports it replaces, with the replacement in the message. Add it last: `import vswUi from "@geosynk/vsw-ui/eslint"; export default [...sdkConfig, ...vswUi];`
+- The validator's `vsw-ui` profile turns off 13 rules about building tokens, a theme or component styling (vsw-ui checks those once in its own CI) and adds two: `UI_IMPORT` (reads the installed contract, so an import of `@mui/x-data-grid` fails with "use DataGrid from @geosynk/vsw-ui/data-grid") and `APP_COSMETIC_CSS` (app CSS may only lay things out). Every report lists the profile and what it hid.
 
 ## Data Exclusions
 Note that the raw HTML/Markdown scraped from the official VertiGIS Developer Center, as well as the Python scraping scripts used to generate these references, are intentionally excluded via `.gitignore` to keep the skill repository clean and focused strictly on AI instructions.
